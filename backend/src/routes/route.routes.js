@@ -5,7 +5,7 @@ import { createRoute, getAllRoutes } from '../controllers/route.controller.js';
 
 const router = express.Router();
 
-router.get("/",Authenticate, Authorize("admin","user"),getAllRoutes);
+router.get("/",getAllRoutes);
 router.post("/",Authenticate, Authorize("admin"),createRoute);
 
 export default router;

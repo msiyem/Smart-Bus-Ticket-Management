@@ -5,7 +5,7 @@ import { createSchedule, searchSchedules } from '../controllers/schedule.control
 
 const router = express.Router();
 
-router.get("/search",Authenticate, Authorize("admin","user"),searchSchedules);
+router.get("/search",searchSchedules);
 router.post("/",Authenticate, Authorize("admin"),createSchedule);
 
 export default router;

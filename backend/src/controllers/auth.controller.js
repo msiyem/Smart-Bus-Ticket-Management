@@ -64,32 +64,22 @@ export const login = async (req, res) => {
   const accessToken = generateAccessToken(user);
   const [refreshToken, sessionId] = await generateRefreshToken(user);
 
-  return res
-    .cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: ms("15m"),
-      path: "/",
-    })
-    .cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: ms(process.env.MAX_AGE), // e.g. 7d
-      path: "/",
-    })
-    .cookie("sessionId", sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: ms(process.env.MAX_AGE),
-      path: "/",
-    })
-    .json({
-      success: true,
-      message: "Login successful",
-    });
+  return res.json({
+    success: true,
+    message: "Login successful",
+
+    accessToken,
+    refreshToken,
+    sessionId,
+    user: {
+      userId: user.id,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      phone: user.phone,
+    },
+  });
 };
 
 //============== GOOGLE LOGIN LOGIC ==============
@@ -115,39 +105,29 @@ export const googleLogin = async (req, res) => {
   const accessToken = generateAccessToken(user);
   const [refreshToken, sessionId] = await generateRefreshToken(user);
 
-  return res
-    .cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: ms("15m"),
-      path: "/",
-    })
-    .cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: ms(process.env.MAX_AGE),
-      path: "/",
-    })
-    .cookie("sessionId", sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: ms(process.env.MAX_AGE),
-      path: "/",
-    })
-    .json({
-      success: true,
-      message: "Google login successful",
-    });
+  return res.json({
+    success: true,
+    message: "Google login successful",
+
+    accessToken,
+    refreshToken,
+    sessionId,
+    user: {
+      userId: user.id,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      phone: user.phone,
+    },
+  });
 };
 
 //============== REFRESH TOKEN LOGIC ===============
 export const refresh = async (req, res) => {
   try {
-    const token = req.cookies?.refreshToken;
-    const sessionId = req.cookies?.sessionId;
+    const token = req.body?.refreshToken || req.cookies?.refreshToken;
+    const sessionId = req.body?.sessionId || req.cookies?.sessionId;
 
     if (!token || !sessionId) {
       return res.status(401).json({
@@ -171,29 +151,19 @@ export const refresh = async (req, res) => {
     ) {
       await revokedRefreshTokenBySessionId(sessionId);
 
-      return res
-        .clearCookie("refreshToken")
-        .clearCookie("accessToken")
-        .clearCookie("sessionId")
-        .status(401)
-        .json({
-          success: false,
-          message: "Refresh token expired",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token expired",
+      });
     }
 
     if (stored.is_revoked) {
       await revokedRefreshTokenByUserId(stored.user_id);
 
-      return res
-        .clearCookie("refreshToken")
-        .clearCookie("accessToken")
-        .clearCookie("sessionId")
-        .status(403)
-        .json({
-          success: false,
-          message: "Refresh token revoked",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Refresh token revoked",
+      });
     }
 
     const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [
@@ -209,7 +179,7 @@ export const refresh = async (req, res) => {
       });
     }
 
-    // 🔁 ROTATE REFRESH TOKEN
+    // rotate refresh token
     const [newRefreshToken, newHashedToken] = await generateNewRefreshToken(
       user,
       sessionId,
@@ -219,25 +189,13 @@ export const refresh = async (req, res) => {
 
     const accessToken = generateAccessToken(user);
 
-    return res
-      .cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: ms("15m"),
-        path: "/",
-      })
-      .cookie("refreshToken", newRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: ms(process.env.MAX_AGE),
-        path: "/",
-      })
-      .json({
-        success: true,
-        message: "Token refreshed",
-      });
+    return res.json({
+      success: true,
+      message: "Token refreshed",
+      accessToken,
+      refreshToken: newRefreshToken,
+      sessionId,
+    });
   } catch (error) {
     console.error("REFRESH ERROR:", error);
 
@@ -250,22 +208,29 @@ export const refresh = async (req, res) => {
 
 //============== LOGOUT LOGIC ===============
 export const logout = async (req, res) => {
-  const token = req.cookies?.refreshToken;
-  const sessionId = req.cookies?.sessionId;
+  try {
+    const token =
+      req.body?.refreshToken || req.cookies?.refreshToken;
 
-  if (token) {
-    const stored = await findRefreshToken(token, sessionId);
-    if (stored) {
-      await revokedRefreshTokenBySessionId(sessionId);
+    const sessionId =
+      req.body?.sessionId || req.cookies?.sessionId;
+
+    if (token && sessionId) {
+      const stored = await findRefreshToken(token, sessionId);
+
+      if (stored) {
+        await revokedRefreshTokenBySessionId(sessionId);
+      }
     }
-  }
 
-  return res
-    .clearCookie("refreshToken")
-    .clearCookie("accessToken")
-    .clearCookie("sessionId")
-    .json({
+    return res.json({
       success: true,
       message: "Logged out successfully",
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed",
+    });
+  }
 };

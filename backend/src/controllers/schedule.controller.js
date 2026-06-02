@@ -9,28 +9,16 @@ export const createSchedule = async (req, res) => {
       "bus_id",
       "departure_time",
       "arrival_time",
-      "fare"
+      "fare",
     );
 
-    const {
-      route_id,
-      bus_id,
-      departure_time,
-      arrival_time,
-      fare,
-    } = req.body;
+    const { route_id, bus_id, departure_time, arrival_time, fare } = req.body;
 
     const [result] = await pool.execute(
       `INSERT INTO schedules
       (route_id, bus_id, departure_time, arrival_time, fare)
       VALUES (?, ?, ?, ?, ?)`,
-      [
-        route_id,
-        bus_id,
-        departure_time,
-        arrival_time,
-        fare,
-      ]
+      [route_id, bus_id, departure_time, arrival_time, fare],
     );
 
     res.status(201).json({
@@ -57,6 +45,8 @@ export const searchSchedules = async (req, res) => {
           s.arrival_time,
           s.fare,
           b.bus_number,
+          b.operator_name,
+          b.capacity,
           b.bus_type,
           r.source_city,
           r.destination_city
@@ -67,7 +57,7 @@ export const searchSchedules = async (req, res) => {
       AND r.destination_city = ?
       AND DATE(s.departure_time) = ?
       AND s.status = 'SCHEDULED'`,
-      [source, destination, date]
+      [source, destination, date],
     );
 
     res.json({

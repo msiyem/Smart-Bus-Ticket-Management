@@ -6,7 +6,14 @@ import bcrypt from "bcrypt";
 
 export const generateAccessToken = (user) => {
   return jwt.sign(
-    { userId: user.id, role: user.role },
+    {
+      userId: user.id,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      phone: user.phone,
+    },
     process.env.JWT_ACCESS_SECRET,
     {
       expiresIn: "15m",
@@ -57,7 +64,7 @@ export const generateNewRefreshToken = async (user, sessionId) => {
       sessionId,
     ],
   );
-  return [token,hashedToken];
+  return [token, hashedToken];
 };
 
 export const revokeToken = async (sessionId, token, newToken = null) => {
