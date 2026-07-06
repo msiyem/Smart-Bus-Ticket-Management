@@ -122,7 +122,7 @@ export const deleteRefreshToken = async (token, sessionId) => {
 
 export const revokedRefreshTokenByUserId = async (id) => {
   await pool.execute(
-    "UPDATE refresh_tokens SET is_revoked = TRUE WHERE user_id = ?",
+    "UPDATE refresh_tokens SET is_revoked = TRUE WHERE user_id = ? AND is_revoked = FALSE",
     [id],
   );
 };

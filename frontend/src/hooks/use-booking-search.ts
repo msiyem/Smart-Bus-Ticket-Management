@@ -1,6 +1,6 @@
 import React from "react";
 
-import { searchSchedules } from "@/action/schedule.action";
+import { searchTripsAction } from "@/action/schedule.action";
 import type { SearchState } from "@/types/booking";
 
 import { useBookingStore } from "@/store/booking.store";
@@ -45,7 +45,7 @@ export function useBookingSearch() {
       }));
 
       try {
-        const response = await searchSchedules({
+        const response = await searchTripsAction({
           source,
           destination,
           date,

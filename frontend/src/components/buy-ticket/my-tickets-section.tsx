@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Clock3, Ticket } from "lucide-react";
 
@@ -29,196 +32,216 @@ export function MyTicketsSection({
   loading,
   error,
 }: MyTicketsSectionProps) {
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+
   const upcomingTrips = data?.upcomingTrips ?? [];
   const recentPastTrips = data?.recentPastTrips ?? [];
 
   return (
-    <section className="mt-10 space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-600 dark:text-slate-400">
-            My tickets
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-100 sm:text-3xl">
-            Upcoming trips and recent history
-          </h2>
+    <section className="p-5 space-y-5">
+      <div className="flex items-center gap-1 sm:gap-3">
+        <div className="h-px w-1/2 bg-slate-200 dark:bg-slate-800"></div>
+        {/* Toggle */}
+        <div className="inline-flex text-nowrap rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
+          <button
+            onClick={() => setActiveTab("upcoming")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              activeTab === "upcoming"
+                ? "bg-white shadow dark:bg-slate-800"
+                : ""
+            }`}
+          >
+            Upcoming Tickets
+          </button>
+
+          <button
+            onClick={() => setActiveTab("past")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              activeTab === "past" ? "bg-white shadow dark:bg-slate-800" : ""
+            }`}
+          >
+            Past Tickets
+          </button>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Recent trips are shown for the last 15 days.
-        </p>
+        <div className="h-px w-1/2 bg-slate-200 dark:bg-slate-800"></div>
       </div>
 
       {loading ? (
-        <Card className="border-slate-200/70 bg-white/80 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
-          <CardContent className="flex items-center gap-3 py-6 text-sm text-slate-600 dark:text-slate-400">
-            <Clock3 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+        <Card>
+          <CardContent className="flex items-center gap-3 py-6">
+            <Clock3 className="h-4 w-4" />
             Loading your tickets...
           </CardContent>
         </Card>
       ) : error ? (
-        <Card className="border-rose-200 bg-rose-50/80 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30">
-          <CardContent className="py-6 text-sm text-rose-700 dark:text-rose-200">
-            {error}
-          </CardContent>
+        <Card>
+          <CardContent className="py-6 text-rose-600">{error}</CardContent>
         </Card>
       ) : upcomingTrips.length === 0 && recentPastTrips.length === 0 ? (
-        <Card className="border-slate-200/70 bg-white/80 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
-          <CardContent className="flex items-center gap-3 py-6 text-sm text-slate-600 dark:text-slate-400">
-            <Ticket className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+        <Card>
+          <CardContent className="flex items-center gap-3 py-6">
+            <Ticket className="h-4 w-4" />
             No tickets yet. Book a trip to see it here.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">
-              Upcoming trips
-            </h3>
-            {upcomingTrips.length > 0 ? (
-              upcomingTrips.map((ticket) => (
-                <Card
-                  key={ticket.booking.id}
-                  className="border-emerald-200/70 bg-white/90 shadow-sm dark:border-emerald-900/50 dark:bg-slate-950/80"
-                >
-                  <CardContent className="space-y-4 p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-lg font-semibold text-slate-950 dark:text-slate-100">
-                          {ticket.booking.source_city} to{" "}
-                          {ticket.booking.destination_city}
-                        </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Booking #{ticket.booking.id} •{" "}
-                          {ticket.booking.booking_status}
-                        </p>
-                      </div>
-                      <div className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                        ৳{ticket.booking.total_amount}
-                      </div>
-                    </div>
+        <>
+          {/* Upcoming Tickets */}
+          {activeTab === "upcoming" && (
+            <div className="space-y-3 border rounded-xl border-emerald-200/70 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-emerald-900/50 dark:bg-emerald-950/40">
+              <h3 className="text-sm text-center font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">
+                Upcoming trips
+              </h3>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
-                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Departure
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {formatDateTime(ticket.booking.departure_time)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
-                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Seats
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {ticket.seats
-                            .map((seat) => seat.seat_number)
-                            .join(", ")}
-                        </p>
-                      </div>
-                    </div>
+              {upcomingTrips.length > 0 ? (
+                upcomingTrips.map((ticket) => (
+                  <Card key={ticket.booking.id}>
+                    <CardContent className="space-y-4 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-semibold">
+                            {ticket.booking.source_city} to{" "}
+                            {ticket.booking.destination_city}
+                          </p>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-400">
-                      <span className="inline-flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4" />
-                        {ticket.booking.payment_status}
-                      </span>
-                      <Button
-                        asChild
-                        className="rounded-xl bg-slate-950 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
-                      >
-                        <Link href={`/booking/${ticket.booking.id}`}>
-                          View ticket
-                        </Link>
-                      </Button>
-                    </div>
+                          <p className="text-sm text-slate-500">
+                            Booking #{ticket.booking.id} •{" "}
+                            {ticket.booking.booking_status}
+                          </p>
+                        </div>
+
+                        <div className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                          ৳{ticket.booking.total_amount}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                          <p className="text-xs uppercase text-slate-500">
+                            Departure
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium">
+                            {formatDateTime(ticket.booking.departure_time)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                          <p className="text-xs uppercase text-slate-500">
+                            Seats
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium">
+                            {ticket.seats
+                              .map((seat) => seat.seat_number)
+                              .join(", ")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-2 text-sm">
+                          <CalendarDays className="h-4 w-4" />
+                          {ticket.booking.payment_status}
+                        </span>
+
+                        <Button asChild>
+                          <Link href={`/booking/${ticket.booking.id}`}>
+                            View Ticket
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="py-6">
+                    You do not have any upcoming trips.
                   </CardContent>
                 </Card>
-              ))
-            ) : (
-              <Card className="border-slate-200/70 bg-white/80 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
-                <CardContent className="py-6 text-sm text-slate-600 dark:text-slate-400">
-                  You do not have any upcoming trips.
-                </CardContent>
-              </Card>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-600 dark:text-slate-400">
-              Recent past trips
-            </h3>
-            {recentPastTrips.length > 0 ? (
-              recentPastTrips.map((ticket) => (
-                <Card
-                  key={ticket.booking.id}
-                  className="border-slate-200/70 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-950/80"
-                >
-                  <CardContent className="space-y-4 p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-lg font-semibold text-slate-950 dark:text-slate-100">
-                          {ticket.booking.source_city} to{" "}
-                          {ticket.booking.destination_city}
-                        </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Booking #{ticket.booking.id} •{" "}
-                          {ticket.booking.booking_status}
-                        </p>
-                      </div>
-                      <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        ৳{ticket.booking.total_amount}
-                      </div>
-                    </div>
+          {/* Past Tickets */}
+          {activeTab === "past" && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-600 dark:text-slate-400">
+                Recent past trips
+              </h3>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
-                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Departure
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {formatDateTime(ticket.booking.departure_time)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
-                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Seats
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {ticket.seats
-                            .map((seat) => seat.seat_number)
-                            .join(", ")}
-                        </p>
-                      </div>
-                    </div>
+              {recentPastTrips.length > 0 ? (
+                recentPastTrips.map((ticket) => (
+                  <Card key={ticket.booking.id}>
+                    <CardContent className="space-y-4 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-semibold">
+                            {ticket.booking.source_city} to{" "}
+                            {ticket.booking.destination_city}
+                          </p>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-400">
-                      <span className="inline-flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4" />
-                        Completed within 15 days
-                      </span>
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900"
-                      >
-                        <Link href={`/booking/${ticket.booking.id}`}>
-                          View ticket
-                        </Link>
-                      </Button>
-                    </div>
+                          <p className="text-sm text-slate-500">
+                            Booking #{ticket.booking.id} •{" "}
+                            {ticket.booking.booking_status}
+                          </p>
+                        </div>
+
+                        <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">
+                          ৳{ticket.booking.total_amount}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                          <p className="text-xs uppercase text-slate-500">
+                            Departure
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium">
+                            {formatDateTime(ticket.booking.departure_time)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+                          <p className="text-xs uppercase text-slate-500">
+                            Seats
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium">
+                            {ticket.seats
+                              .map((seat) => seat.seat_number)
+                              .join(", ")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-2 text-sm">
+                          <CalendarDays className="h-4 w-4" />
+                          Completed within 15 days
+                        </span>
+
+                        <Button asChild variant="outline">
+                          <Link href={`/booking/${ticket.booking.id}`}>
+                            View Ticket
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="py-6">
+                    No recent past trips found in the last 15 days.
                   </CardContent>
                 </Card>
-              ))
-            ) : (
-              <Card className="border-slate-200/70 bg-white/80 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
-                <CardContent className="py-6 text-sm text-slate-600 dark:text-slate-400">
-                  No recent past trips found in the last 15 days.
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </section>
   );

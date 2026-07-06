@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { createSchedule } from "@/action/schedule.admin.action";
+import { createScheduleFormAction } from "@/action/schedule.admin.action";
 import {
   AdminPageHeader,
   AdminPanel,
@@ -19,6 +21,10 @@ import {
 } from "@/components/ui/select";
 import type { Bus, Route } from "@/lib/types";
 import { DateTimePicker } from "@/components/shared/date-time-picker";
+import {
+  createScheduleSchema,
+  CreateScheduleData,
+} from "@/lib/validations/schedule";
 
 export default function AdminSchedulesClient({
   initialRoutes,
@@ -27,46 +33,55 @@ export default function AdminSchedulesClient({
   initialRoutes: Route[];
   initialBuses: Bus[];
 }) {
-  const [routeId, setRouteId] = React.useState<string>("");
-  const [busId, setBusId] = React.useState<string>("");
-  const [departureTime, setDepartureTime] = React.useState("");
-  const [arrivalTime, setArrivalTime] = React.useState("");
-  const [fare, setFare] = React.useState<number>(0);
   const [routes] = React.useState<Route[]>(initialRoutes);
   const [buses] = React.useState<Bus[]>(initialBuses);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const handleCreateSchedule = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    register,
+    formState: { errors },
+  } = useForm<CreateScheduleData>({
+    resolver: zodResolver(createScheduleSchema) as never,
+    defaultValues: {
+      route_id: 0,
+      bus_id: 0,
+      departure_time: "",
+      arrival_time: "",
+      fare: 0,
+    },
+  });
 
-    if (!routeId || !busId || !departureTime || !arrivalTime || fare <= 0) {
-      toast.warning("Fill all schedule fields first");
-      return;
-    }
+  const routeId = watch("route_id");
+  const busId = watch("bus_id");
+  const departureTime = watch("departure_time");
+  const arrivalTime = watch("arrival_time");
 
+  const onSubmit = async (values: CreateScheduleData) => {
     setSubmitting(true);
+    const formData = new FormData();
+    formData.append("route_id", String(values.route_id));
+    formData.append("bus_id", String(values.bus_id));
+    formData.append("departure_time", values.departure_time);
+    formData.append("arrival_time", values.arrival_time);
+    formData.append("fare", String(values.fare));
 
-    const response = await createSchedule({
-      route_id: Number(routeId),
-      bus_id: Number(busId),
-      departure_time: departureTime,
-      arrival_time: arrivalTime,
-      fare,
-    });
-
-    if (response.success) {
+    const result = await createScheduleFormAction(undefined, formData);
+    if (result.success) {
       toast.success("Schedule created successfully");
-      setRouteId("");
-      setBusId("");
-      setDepartureTime("");
-      setArrivalTime("");
-      setFare(0);
+      reset({
+        route_id: 0,
+        bus_id: 0,
+        departure_time: "",
+        arrival_time: "",
+        fare: 0,
+      });
     } else {
-      toast.error(response.message || "Failed to create schedule");
+      toast.error(result.message || "Failed to create schedule");
     }
-
     setSubmitting(false);
   };
 
@@ -83,10 +98,16 @@ export default function AdminSchedulesClient({
       >
         <form
           className="grid gap-3 md:grid-cols-2"
-          onSubmit={handleCreateSchedule}
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
         >
           <div className="md:col-span-1">
-            <Select value={routeId} onValueChange={setRouteId}>
+            <Select
+              value={routeId ? String(routeId) : ""}
+              onValueChange={(v) =>
+                setValue("route_id", Number(v), { shouldValidate: true })
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select route" />
               </SelectTrigger>
@@ -98,10 +119,20 @@ export default function AdminSchedulesClient({
                 ))}
               </SelectContent>
             </Select>
+            {errors.route_id && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.route_id.message}
+              </p>
+            )}
           </div>
 
           <div className="md:col-span-1">
-            <Select value={busId} onValueChange={setBusId}>
+            <Select
+              value={busId ? String(busId) : ""}
+              onValueChange={(v) =>
+                setValue("bus_id", Number(v), { shouldValidate: true })
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select bus" />
               </SelectTrigger>
@@ -113,28 +144,52 @@ export default function AdminSchedulesClient({
                 ))}
               </SelectContent>
             </Select>
+            {errors.bus_id && (
+              <p className="mt-1 text-xs text-red-500">{errors.bus_id.message}</p>
+            )}
           </div>
 
-          <DateTimePicker
-            value={departureTime}
-            onChange={setDepartureTime}
-            placeholder="Departure time"
-          />
+          <div className="md:col-span-1">
+            <DateTimePicker
+              value={departureTime}
+              onChange={(v) =>
+                setValue("departure_time", v, { shouldValidate: true })
+              }
+              placeholder="Departure time"
+            />
+            {errors.departure_time && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.departure_time.message}
+              </p>
+            )}
+          </div>
 
-          <DateTimePicker
-            value={arrivalTime}
-            onChange={setArrivalTime}
-            placeholder="Arrival time"
-          />
+          <div className="md:col-span-1">
+            <DateTimePicker
+              value={arrivalTime}
+              onChange={(v) =>
+                setValue("arrival_time", v, { shouldValidate: true })
+              }
+              placeholder="Arrival time"
+            />
+            {errors.arrival_time && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.arrival_time.message}
+              </p>
+            )}
+          </div>
 
-          <Input
-            type="number"
-            min={1}
-            value={fare}
-            onChange={(event) => setFare(Number(event.target.value))}
-            placeholder="Fare"
-            className="md:col-span-2"
-          />
+          <div className="md:col-span-2">
+            <Input
+              type="number"
+              min={1}
+              {...register("fare")}
+              placeholder="Fare"
+            />
+            {errors.fare && (
+              <p className="mt-1 text-xs text-red-500">{errors.fare.message}</p>
+            )}
+          </div>
 
           <Button
             type="submit"

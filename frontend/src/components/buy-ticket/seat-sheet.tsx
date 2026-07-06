@@ -13,7 +13,7 @@ import { formatTime } from "@/lib/formatters";
 import { groupBookedSeatsByRow } from "@/lib/seat-utils";
 import type {
   BookingSummary,
-  ScheduleSearchResult,
+  TripSearchResult,
   SeatRow,
 } from "@/types/booking";
 import { SeatMap } from "@/components/buy-ticket/seat-map";
@@ -21,7 +21,7 @@ import { SeatMap } from "@/components/buy-ticket/seat-map";
 type SeatSheetProps = {
   open: boolean;
   onClose: () => void;
-  activeSchedule: ScheduleSearchResult | null;
+  activeTrip: TripSearchResult | null;
   selectedSeats: string[];
   availableSeatsCount: number;
   seatRows: SeatRow[];
@@ -37,7 +37,7 @@ type SeatSheetProps = {
 export function SeatSheet({
   open,
   onClose,
-  activeSchedule,
+  activeTrip,
   selectedSeats,
   availableSeatsCount,
   seatRows,
@@ -58,7 +58,7 @@ export function SeatSheet({
 
   return (
     <Sheet
-      open={open && Boolean(activeSchedule)}
+      open={open && Boolean(activeTrip)}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
           onClose();
@@ -72,8 +72,8 @@ export function SeatSheet({
         <div className="flex h-full flex-col overflow-hidden">
           <SheetHeader className="border-b border-slate-200/70 px-5 py-4 dark:border-slate-800">
             <SheetTitle className="text-xl font-semibold text-slate-950 dark:text-slate-100">
-              {activeSchedule
-                ? `Choose seats for ${activeSchedule.source_city} to ${activeSchedule.destination_city}`
+              {activeTrip
+                ? `Choose seats for ${activeTrip.source_city} to ${activeTrip.destination_city}`
                 : "Choose seats"}
             </SheetTitle>
             <SheetDescription className="text-slate-600 dark:text-slate-400">
@@ -83,7 +83,7 @@ export function SeatSheet({
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-5 py-5">
-            {activeSchedule ? (
+            {activeTrip ? (
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -92,8 +92,7 @@ export function SeatSheet({
                         Route
                       </p>
                       <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {activeSchedule.source_city} to{" "}
-                        {activeSchedule.destination_city}
+                        {activeTrip.source_city} to {activeTrip.destination_city}
                       </p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
@@ -101,8 +100,7 @@ export function SeatSheet({
                         Bus
                       </p>
                       <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {activeSchedule.operator_name ||
-                          activeSchedule.bus_type}
+                        {activeTrip.operator_name || activeTrip.bus_type}
                       </p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
@@ -110,7 +108,7 @@ export function SeatSheet({
                         Departure
                       </p>
                       <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {formatTime(activeSchedule.departure_time)}
+                        {formatTime(activeTrip.departure_time)}
                       </p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
@@ -118,7 +116,7 @@ export function SeatSheet({
                         Arrival
                       </p>
                       <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {formatTime(activeSchedule.arrival_time)}
+                        {formatTime(activeTrip.arrival_time)}
                       </p>
                     </div>
                   </div>
@@ -174,7 +172,7 @@ export function SeatSheet({
                         Total fare
                       </p>
                       <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        ৳{activeSchedule.fare * selectedSeats.length}
+                        ৳{activeTrip.fare * selectedSeats.length}
                       </p>
                     </div>
                   </div>
@@ -185,7 +183,7 @@ export function SeatSheet({
                         Fare per seat
                       </span>
                       <span className="font-medium text-slate-900 dark:text-slate-100">
-                        ৳{activeSchedule.fare}
+                        ৳{activeTrip.fare}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
@@ -193,8 +191,8 @@ export function SeatSheet({
                         Travel time
                       </span>
                       <span className="font-medium text-slate-900 dark:text-slate-100">
-                        {formatTime(activeSchedule.departure_time)} -{" "}
-                        {formatTime(activeSchedule.arrival_time)}
+                        {formatTime(activeTrip.departure_time)} -{" "}
+                        {formatTime(activeTrip.arrival_time)}
                       </span>
                     </div>
                   </div>

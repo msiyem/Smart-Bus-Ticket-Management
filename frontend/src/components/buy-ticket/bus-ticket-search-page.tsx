@@ -10,6 +10,9 @@ import {
   SlidersHorizontal,
   TrainFront,
   MapPin,
+  BusFront,
+  Bus,
+  MapPinned,
 } from "lucide-react";
 
 import { refreshSession } from "@/action/session.action";
@@ -32,9 +35,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatTime } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { useBooking } from "@/hooks/use-booking";
-import type { ScheduleSearchResult, SearchState } from "@/types/booking";
+import type { TripSearchResult, SearchState } from "@/types/booking";
 import { useAuthModalStore } from "@/store/auth-modal-store";
 import { MiniSearchForm } from "./mini-search-form";
+import { format } from "date-fns";
 
 type BusTicketSearchPageProps = {
   isAuthenticated: boolean;
@@ -43,7 +47,7 @@ type BusTicketSearchPageProps = {
 
 type DepartureWindow = "all" | "morning" | "afternoon" | "evening" | "night";
 
-function getBusClass(schedule: ScheduleSearchResult) {
+function getBusClass(schedule: TripSearchResult) {
   const value =
     `${schedule.bus_type} ${schedule.operator_name || ""}`.toLowerCase();
 
@@ -87,11 +91,11 @@ function BusResultCard({
   onSelect,
   searchDate,
 }: {
-  schedule: ScheduleSearchResult;
+  schedule: TripSearchResult;
   isActive: boolean;
   availableSeatsCount: number | null;
   loadingSeats: boolean;
-  onSelect: (schedule: ScheduleSearchResult) => void;
+  onSelect: (schedule: TripSearchResult) => void;
   searchDate: string;
 }) {
   const busClass = getBusClass(schedule);
@@ -107,15 +111,16 @@ function BusResultCard({
         isActive && "border-emerald-500 ring-1 ring-emerald-500/20",
       )}
     >
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <CardContent className=" lg:px-6">
+        <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
           {/* LEFT */}
           <div className="min-w-0 flex-1">
             {/* TOP */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
+                  <BusFront className="h-6 w-6 p-1 text-emerald-500 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-600 rounded-2xl" />
+                  <h3 className="truncate text-lg font-bold  text-slate-900 dark:text-slate-100">
                     {schedule.operator_name || schedule.bus_type}
                   </h3>
 
@@ -140,7 +145,7 @@ function BusResultCard({
                   {schedule.bus_number}
                 </p> */}
                 {/* ROUTE + DATE */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
+                {/* <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-emerald-600" />
                     <span className="truncate">
@@ -161,10 +166,10 @@ function BusResultCard({
                       </span>
                     </div>
                   ) : null}
-                </div>
+                </div> */}
               </div>
 
-              <div className="text-right lg:hidden">
+              {/* <div className="text-right lg:hidden">
                 <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   ৳{schedule.fare}
                 </p>
@@ -174,39 +179,43 @@ function BusResultCard({
                     ? `${availableSeatsCount} Seats`
                     : `${schedule.capacity} Seats`}
                 </p>
-              </div>
+              </div> */}
             </div>
 
             {/* TIME SECTION */}
             <div
               className="
-            mt-4
-            grid
-            grid-cols-[1fr_auto_1fr]
-            items-center
-            gap-3
-          "
+              mt-2
+              lg:mr-6
+              grid
+              grid-cols-[1fr_auto_1fr]
+              items-center
+              gap-3
+            "
             >
               {/* DEPARTURE */}
               <div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   {formatTime(schedule.departure_time)}
                 </p>
 
                 <p className="mt-1 text-xs font-medium text-slate-500">
+                  {format(new Date(schedule.departure_time), "EEE,dd MMM")}
+                </p>
+
+                <p className="flex items-center gap-0.5 mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+                  <MapPin className="h-3 w-3 text-emerald-600 inline-block" />
                   {schedule.source_city}
                 </p>
               </div>
 
               {/* CENTER */}
-              <div className="flex min-w-[90px] flex-col items-center">
+              <div className="flex min-w-[150px] flex-col items-center">
                 <span className="text-[11px] font-medium text-slate-500">
                   {duration}
                 </span>
 
                 <div className="mt-1 flex w-full items-center gap-1">
-                  <div className="h-[2px] flex-1 rounded-full bg-slate-200 dark:bg-slate-800" />
-
                   <div
                     className="
                   flex
@@ -223,20 +232,47 @@ function BusResultCard({
                   dark:bg-emerald-500/10
                 "
                   >
-                    <TrainFront className="h-3.5 w-3.5" />
+                    <Bus className="h-3.5 w-3.5" />
                   </div>
+                  <div className="h-[2px] flex-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-[2px] flex-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-[2px] flex-1 rounded-full bg-slate-200 dark:bg-slate-800" />
 
                   <div className="h-[2px] flex-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-[2px] flex-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+                  <div
+                    className="
+                  flex
+                  h-7
+                  w-7
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-emerald-200
+                  bg-emerald-50
+                  text-emerald-600
+                  dark:border-emerald-500/20
+                  dark:bg-emerald-500/10
+                "
+                  >
+                    <MapPinned className="h-3.5 w-3.5" />
+                  </div>
                 </div>
               </div>
 
               {/* ARRIVAL */}
               <div className="text-right">
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   {formatTime(schedule.arrival_time)}
                 </p>
 
                 <p className="mt-1 text-xs font-medium text-slate-500">
+                  {format(new Date(schedule.arrival_time), "EEE,dd MMM")}
+                </p>
+
+                <p className="flex items-center justify-end gap-0.5 mt-1  text-xs font-bold text-slate-600 dark:text-slate-300">
+                  <MapPin className="h-3 w-3 text-emerald-600 inline-block" />
                   {schedule.destination_city}
                 </p>
               </div>
@@ -263,35 +299,37 @@ function BusResultCard({
           dark:border-slate-800
         "
           >
-            <div className="hidden text-right lg:block">
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                ৳{schedule.fare}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                {isActive
-                  ? `${availableSeatsCount} Seats Available`
-                  : `${schedule.capacity} Seats`}
+            <div className=" text-right">
+              <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <span className="text-sm">৳</span>
+                {schedule.fare}
               </p>
             </div>
 
-            <Button
-              onClick={() => onSelect(schedule)}
-              disabled={loadingSeats && isActive}
-              className="
-            h-11
+            <div className="flex flex-col items-center">
+              <Button
+                onClick={() => onSelect(schedule)}
+                disabled={loadingSeats && isActive}
+                className="
+            h-8
             rounded-xl
             bg-emerald-600
-            px-6
-            text-sm
+            px-4
+            text-xs
             font-semibold
             text-white
             shadow-sm
             hover:bg-emerald-700
           "
-            >
-              {loadingSeats && isActive ? "Loading..." : "View Seats"}
-            </Button>
+              >
+                {loadingSeats && isActive ? "Loading..." : "View Seats"}
+              </Button>
+              <p className="mt-1 text-xs text-slate-500">
+                {isActive
+                  ? `${availableSeatsCount} Seats Available`
+                  : `${schedule.capacity}  Seat`}
+              </p>
+            </div>
           </div>
         </div>
       </CardContent>
@@ -630,7 +668,7 @@ export function BusTicketSearchPage({
     setIsApplyingFilters(true);
 
     // fake delay for smooth UX
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     setMobileFiltersOpen(false);
 
@@ -641,6 +679,9 @@ export function BusTicketSearchPage({
       return true;
     }
 
+    // Only refresh when we have nothing else to go on.
+    // refreshSession() dedupes internally, so even if multiple paths call
+    // it concurrently only one backend round-trip happens.
     const refreshed = await refreshSession();
 
     if (refreshed) {
@@ -656,7 +697,7 @@ export function BusTicketSearchPage({
     setSearch,
     swapCities,
     results,
-    activeSchedule,
+    activeTrip,
     seatSheetOpen,
     setSeatSheetOpen,
     availableSeats,
@@ -823,7 +864,7 @@ export function BusTicketSearchPage({
           onClose={() => setBookingToast({ visible: false, id: null })}
         />
 
-        <div className="mx-auto max-w-7xl px-3 py-4 sm:px-5 lg:px-8">
+        <div className="xl:mx-auto max-w-6xl mx-3 sm:mx-6 md:mx-8 py-5">
           <MiniSearchForm
             search={search}
             onSearchChange={setSearch}
@@ -852,40 +893,114 @@ export function BusTicketSearchPage({
           </div>
         </div>
 
-        <div className="mt-6 mx-4 sm:mx-6 lg:mx-8">
+        <div className="max-w-6xl mt-6 mx-4 sm:mx-6 md:mx-8 xl:mx-auto">
           {showInitialLoading ? (
-            <section className="mx-auto max-w-6xl space-y-5 px-0 lg:px-0">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24 rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
-                <Skeleton className="h-9 w-44 rounded-xl bg-slate-200/80 dark:bg-slate-800/80" />
-                <Skeleton className="h-5 w-96 max-w-full rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
+            <section className="mx-auto max-w-6xl space-y-4 px-0 lg:px-0">
+              {/* ── MOBILE / TABLET: Search Filters bar (<lg) ── */}
+              <div className="flex items-center justify-between gap-3 rounded-[1.5rem] border border-slate-200/70 bg-white/90 px-4 py-3 shadow-sm backdrop-blur lg:hidden dark:border-slate-700/50 dark:bg-slate-900/80">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-3 w-28 rounded-full bg-slate-200/80 dark:bg-slate-700/80" />
+                  <Skeleton className="h-3.5 w-20 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                </div>
+                <Skeleton className="h-9 w-24 rounded-xl bg-emerald-100/80 dark:bg-slate-700/80" />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="rounded-2xl border border-slate-200/70 bg-white/85 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/80"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32 rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
-                          <Skeleton className="h-3 w-24 rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
-                        </div>
-                        <Skeleton className="h-8 w-16 rounded-xl bg-emerald-100/80 dark:bg-emerald-500/10" />
-                      </div>
+              {/* ── SORT BAR (all screens) ── */}
+              <div className="rounded-[1.75rem] border border-slate-200/70 bg-white/90 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-slate-700/50 dark:bg-slate-900/80">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Skeleton className="h-9 w-28 rounded-xl bg-slate-200/80 dark:bg-slate-700/80" />
+                  <Skeleton className="h-9 w-28 rounded-xl bg-slate-200/80 dark:bg-slate-700/80" />
+                  <Skeleton className="ml-auto h-8 w-28 rounded-full bg-emerald-100/80 dark:bg-slate-700/60" />
+                </div>
+              </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <Skeleton className="h-16 rounded-2xl bg-slate-200/80 dark:bg-slate-800/80" />
-                        <Skeleton className="h-16 rounded-2xl bg-slate-200/80 dark:bg-slate-800/80" />
-                      </div>
-
-                      <Skeleton className="h-3 w-36 rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
-                      <Skeleton className="h-10 w-full rounded-xl bg-slate-200/80 dark:bg-slate-800/80" />
-                    </div>
+              {/* ── DESKTOP: sidebar + cards / MOBILE: cards only ── */}
+              <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+                {/* Filter sidebar – desktop only */}
+                <aside className="hidden lg:block sticky top-24 self-start rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-sm backdrop-blur space-y-5 dark:border-slate-700/50 dark:bg-slate-900/80">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-emerald-100 pb-4 dark:border-slate-700/50">
+                    <Skeleton className="h-3 w-16 rounded-full bg-slate-200/80 dark:bg-slate-700/80" />
+                    <Skeleton className="h-7 w-14 rounded-xl bg-slate-200/60 dark:bg-slate-700/60" />
                   </div>
-                ))}
+                  {/* Filter sections */}
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 space-y-3 dark:border-slate-700/40 dark:bg-slate-800/40"
+                    >
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-3 w-20 rounded-full bg-slate-200/80 dark:bg-slate-700/80" />
+                        <Skeleton className="h-4 w-4 rounded bg-slate-200/60 dark:bg-slate-700/60" />
+                      </div>
+                    </div>
+                  ))}
+                </aside>
+
+                {/* Cards column */}
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 px-5 shadow-sm backdrop-blur dark:border-slate-700/50 dark:bg-slate-900/80"
+                    >
+                      {/* Top: icon + name + badge + route/date */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-6 w-6 rounded-2xl bg-slate-200/80 dark:bg-slate-700/80" />
+                          <Skeleton className="h-5 w-36 rounded-full bg-slate-200/80 dark:bg-slate-700/80" />
+                          <Skeleton className="h-4 w-10 rounded-full bg-emerald-100/80 dark:bg-slate-700/60" />
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-3 w-28 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                          <Skeleton className="h-3 w-24 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                        </div>
+                      </div>
+
+                      {/* Time section */}
+                      <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                        {/* Departure */}
+                        <div className="space-y-1.5">
+                          <Skeleton className="h-7 w-20 rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
+                          <Skeleton className="h-3 w-12 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                        </div>
+                        {/* Center timeline */}
+                        <div className="flex min-w-[90px] flex-col items-center gap-1">
+                          <Skeleton className="h-3 w-10 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                          <div className="flex w-full items-center gap-1">
+                            <Skeleton className="h-0.5 flex-1 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                            <Skeleton className="h-7 w-7 rounded-full bg-emerald-100/80 dark:bg-slate-700/80" />
+                            <Skeleton className="h-0.5 flex-1 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                          </div>
+                        </div>
+                        {/* Arrival */}
+                        <div className="flex flex-col items-end gap-1.5">
+                          <Skeleton className="h-7 w-20 rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
+                          <Skeleton className="h-3 w-12 rounded-full bg-slate-200/60 dark:bg-slate-700/60" />
+                        </div>
+                      </div>
+
+                      {/* Mobile bottom: fare + button */}
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-200/70 pt-4 lg:hidden dark:border-slate-700/40">
+                        <Skeleton className="h-7 w-20 rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
+                        <div className="flex flex-col items-end gap-1">
+                          <Skeleton className="h-9 w-28 rounded-xl bg-emerald-100/80 dark:bg-emerald-800/60" />
+                          <Skeleton className="h-3 w-20 rounded-full bg-slate-200/50 dark:bg-slate-700/50" />
+                        </div>
+                      </div>
+
+                      {/* Desktop right: fare + button (lg border-l layout) */}
+                      <div className="hidden lg:flex lg:justify-between lg:items-center lg:border-t lg:border-slate-200/70 lg:mt-4 lg:pt-4 dark:lg:border-slate-700/40">
+                        <div /> {/* spacer */}
+                        <div className="flex flex-col items-end gap-2">
+                          <Skeleton className="h-7 w-20 rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
+                          <Skeleton className="h-9 w-28 rounded-xl bg-emerald-100/80 dark:bg-emerald-800/60" />
+                          <Skeleton className="h-3 w-20 rounded-full bg-slate-200/50 dark:bg-slate-700/50" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           ) : (
@@ -945,18 +1060,18 @@ export function BusTicketSearchPage({
                   />
                 </aside>
                 <div className="space-y-3">
-                  <div className="rounded-[1.75rem] border border-slate-200/70 bg-white/90 p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-                    <div className="flex flex-wrap items-center gap-3">
+                  <div className="rounded-xl border border-slate-200/70 bg-white/90 p-4 py-2.5 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+                    <div className="flex flex-wrap items-center gap-3 ">
                       <Button
                         variant="outline"
-                        className="h-10 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                        className="h-8 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                         onClick={() => setSortOrder("asc")}
                       >
                         LOW TO HIGH
                       </Button>
                       <Button
                         variant="outline"
-                        className="h-10 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                        className="h-8 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                         onClick={() => setSortOrder("desc")}
                       >
                         HIGH TO LOW
@@ -977,11 +1092,11 @@ export function BusTicketSearchPage({
                   ) : (
                     <div className="space-y-4">
                       {filteredResults.map((schedule) => {
-                        const isActive = activeSchedule?.id === schedule.id;
+                        const isActive = activeTrip?.trip_id === schedule.trip_id;
 
                         return (
                           <BusResultCard
-                            key={schedule.id}
+                            key={schedule.trip_id}
                             schedule={schedule}
                             isActive={isActive}
                             availableSeatsCount={
@@ -1131,7 +1246,7 @@ export function BusTicketSearchPage({
         <SeatSheet
           open={seatSheetOpen}
           onClose={() => setSeatSheetOpen(false)}
-          activeSchedule={activeSchedule}
+          activeTrip={activeTrip}
           selectedSeats={selectedSeats}
           availableSeatsCount={availableSeats.length}
           seatRows={seatRows}

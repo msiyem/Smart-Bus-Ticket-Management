@@ -43,7 +43,7 @@ const formatDateTime = (value: string) => {
   }).format(date);
 };
 
-export default function BookingTicketPage({
+export default function  BookingTicketPage({
   bookingId,
   user,
 }: BookingTicketPageProps) {

@@ -6,16 +6,17 @@ import {
   createBooking,
   getMyBookings,
   getBookingDetails,
+  getBookingsByDay,
 } from "../controllers/booking.controller.js";
-import { getBookingsByDay } from "../controllers/booking.controller.js";
+import { validate } from "../middleware/validate.middleware.js";
+import { createBookingSchema } from "../validations/booking.validation.js";
 
 const router = express.Router();
 
-router.get("/available-seats/:scheduleId", getAvailableSeats);
-router.post("/", Authenticate, createBooking);
+router.get("/available-seats/:tripId", getAvailableSeats);
+router.post("/", Authenticate, validate(createBookingSchema), createBooking);
 router.get("/me", Authenticate, getMyBookings);
 // Admin: get all buses + bookings for a specific day (query: ?date=YYYY-MM-DD)
 router.get("/admin/day", Authenticate, Authorize("admin"), getBookingsByDay);
 router.get("/:bookingId", Authenticate, getBookingDetails);
-
 export default router;

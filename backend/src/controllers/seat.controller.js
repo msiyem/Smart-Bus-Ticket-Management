@@ -3,30 +3,31 @@ import { generateSeats } from "../utils/seatGenerator.js";
 
 export const getAvailableSeats = async (req, res) => {
   try {
-    const { scheduleId } = req.params;
+    const { tripId } = req.params;
 
-    const [[schedule]] = await pool.execute(
+    const [[trip]] = await pool.execute(
       `SELECT b.capacity
-      FROM schedules s
+      FROM trips t
+      JOIN schedules s ON t.schedule_id = s.id
       JOIN buses b ON s.bus_id = b.id
-      WHERE s.id = ?`,
-      [scheduleId]
+      WHERE t.id = ?`,
+      [tripId]
     );
 
-    if (!schedule) {
+    if (!trip) {
       return res.status(404).json({
         success: false,
-        message: "Schedule not found",
+        message: "Trip not found",
       });
     }
 
-    const allSeats = generateSeats(schedule.capacity);
+    const allSeats = generateSeats(trip.capacity);
 
     const [booked] = await pool.execute(
       `SELECT seat_number
       FROM booking_seats
-      WHERE schedule_id = ?`,
-      [scheduleId]
+      WHERE trip_id = ?`,
+      [tripId]
     );
 
     const bookedSeats = booked.map(

@@ -4,9 +4,9 @@ import type {
   BookingSummary,
   BookingToastState,
   LoadingState,
-  ScheduleSearchResult,
   SearchState,
   StatusState,
+  TripSearchResult,
 } from "@/types/booking";
 
 type BookingStore = {
@@ -17,14 +17,14 @@ type BookingStore = {
       | ((prev: SearchState) => SearchState),
   ) => void;
 
-  results: ScheduleSearchResult[];
+  results: TripSearchResult[];
   setResults: (
-    results: ScheduleSearchResult[],
+    results: TripSearchResult[],
   ) => void;
 
-  activeSchedule: ScheduleSearchResult | null;
-  setActiveSchedule: (
-    schedule: ScheduleSearchResult | null,
+  activeTrip: TripSearchResult | null;
+  setActiveTrip: (
+    trip: TripSearchResult | null,
   ) => void;
 
   availableSeats: string[];
@@ -75,9 +75,9 @@ export const useBookingStore =
     results: [],
     setResults: (results) => set({ results }),
 
-    activeSchedule: null,
-    setActiveSchedule: (activeSchedule) =>
-      set({ activeSchedule }),
+    activeTrip: null,
+    setActiveTrip: (activeTrip) =>
+      set({ activeTrip }),
 
     availableSeats: [],
     setAvailableSeats: (availableSeats) =>
@@ -119,7 +119,7 @@ export const useBookingStore =
     resetBookingState: () =>
       set({
         results: [],
-        activeSchedule: null,
+        activeTrip: null,
         availableSeats: [],
         seatSheetOpen: false,
         bookingSummary: null,

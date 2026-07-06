@@ -1,12 +1,52 @@
-export type ScheduleSearchResult = {
-  id: number;
+/**
+ * Trip-aware search result returned by GET /api/schedules/search.
+ * Replaces the old ScheduleSearchResult that exposed schedule_id only.
+ */
+export type TripSearchResult = {
+  trip_id: number;
+  schedule_id: number;
+  trip_date: string; // YYYY-MM-DD
   departure_time: string;
   arrival_time: string;
   fare: number;
+  status: "SCHEDULED" | "CANCELLED" | "COMPLETED";
+  actual_departure_time?: string | null;
+  actual_arrival_time?: string | null;
+  cancelled_reason?: string | null;
+  repeat_days: number;
   bus_number: string;
   operator_name: string | null;
   capacity: number;
   bus_type: string;
+  source_city: string;
+  destination_city: string;
+  route_id: number;
+  bus_id: number;
+  operator_id?: number | null;
+  // Live availability computed by the backend.
+  available_seats: number | null;
+};
+
+/**
+ * @deprecated Use TripSearchResult. Retained for legacy components still
+ * consuming the old schedule-only payload.
+ */
+export type ScheduleSearchResult = TripSearchResult;
+
+export type ScheduleTemplate = {
+  id: number;
+  route_id: number;
+  bus_id: number;
+  departure_time: string;
+  arrival_time: string;
+  fare: number;
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  repeat_days: number;
+  bus_number: string;
+  bus_type: string;
+  capacity: number;
+  operator_name: string | null;
+  operator_id?: number | null;
   source_city: string;
   destination_city: string;
 };
@@ -23,7 +63,7 @@ export type SeatRow = {
 
 export type BookingSummary = {
   bookingId: number;
-  schedule: ScheduleSearchResult;
+  trip: TripSearchResult;
   seats: string[];
   totalAmount: number;
 };
@@ -53,11 +93,15 @@ export type BookingToastState = {
 export type BookingTripItem = {
   booking: {
     id: number;
-    schedule_id: number;
+    trip_id: number;
+    schedule_id?: number;
     booking_status: "PENDING" | "CONFIRMED" | "CANCELLED";
     payment_status: "UNPAID" | "PAID" | "REFUNDED";
     total_amount: number;
     booking_time: string;
+    trip_date?: string;
+    trip_status?: "SCHEDULED" | "CANCELLED" | "COMPLETED";
+    cancelled_reason?: string | null;
     departure_time: string;
     arrival_time: string;
     fare: number;

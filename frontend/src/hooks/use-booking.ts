@@ -23,7 +23,7 @@ export function useBooking(params: UseBookingParams) {
     clearSelectedSeats: seatManager.clearSelectedSeats,
   });
 
-  const { loadAvailableSeatsForSchedule, toggleSeat, ...seatManagerRest } =
+  const { loadAvailableSeatsForTrip, toggleSeat, ...seatManagerRest } =
     seatManager;
 
   return {
@@ -33,7 +33,7 @@ export function useBooking(params: UseBookingParams) {
 
     ...seatManagerRest,
 
-    handleScheduleSelect: loadAvailableSeatsForSchedule,
+    handleTripSelect: loadAvailableSeatsForTrip,
     handleSeatToggle: toggleSeat,
     maxSeatsPerBooking: MAX_SEATS_PER_BOOKING,
 

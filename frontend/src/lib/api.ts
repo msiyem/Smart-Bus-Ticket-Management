@@ -9,20 +9,8 @@ export interface APIResponse<T = null> {
 
 import { refreshSession } from "@/action/session.action";
 
-// prevent multiple refresh calls
-let refreshPromise: Promise<boolean> | null = null;
-
-async function refreshToken(): Promise<boolean> {
-  if (!refreshPromise) {
-    refreshPromise = refreshSession()
-      .catch(() => false)
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-
-  return refreshPromise;
-}
+// refreshSession() owns its own in-flight promise (see session.action.ts),
+// so concurrent callers automatically collapse into a single backend refresh.
 
 export async function API<T>(
   endpoint: string,
@@ -43,9 +31,12 @@ export async function API<T>(
   // auto refresh on 401 and retry once
 
   if (res.status === 401 && !retry) {
-    const ok = await refreshToken();
+    // refreshSession returns the new accessToken when successful
+    // (Route Handler has also attached Set-Cookie to its response,
+    // which this browser picks up automatically via credentials: include).
+    const newToken = await refreshSession();
 
-    if (ok) {
+    if (newToken) {
       return API<T>(endpoint, options, true);
     }
 

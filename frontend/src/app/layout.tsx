@@ -6,6 +6,8 @@ import AuthModalRoot from "@/components/auth/auth-modal-root";
 import NavBar from "@/components/shared/navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getUser } from "@/lib/auth/getUser";
+import SidebarLayout from "@/components/shared/sidebar-layout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +34,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user: any = await getUser();
+  const hasSidebar = user?.role === "admin" || user?.role === "operator";
   return (
     <html
       lang="en"
@@ -47,10 +51,17 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <div className="print:hidden">
-              <NavBar />
-            </div>
-            <main className="flex-1 pt-16 print:pt-0">{children}</main>
+            {hasSidebar ? (
+              <SidebarLayout role={user.role} nav={<NavBar hasSidebar />}>
+                {children}
+              </SidebarLayout>
+            ) : (
+              <>
+                <NavBar />
+
+                <main className="flex-1 print:pt-0">{children}</main>
+              </>
+            )}
             <div className="print:hidden">
               <AuthModalRoot />
               <Toaster richColors position="top-right" />

@@ -10,13 +10,13 @@ export const createBooking = async (req, res) => {
   try {
     const userId = req.user?.userId;
 
-    requireFields(req.body, "scheduleId", "seatNumbers");
+    requireFields(req.body, "tripId", "seatNumbers");
 
-    const { scheduleId, seatNumbers } = req.body;
+    const { tripId, seatNumbers } = req.body;
 
     const bookingId = await createBookingService({
       userId,
-      scheduleId,
+      tripId,
       seatNumbers,
     });
 

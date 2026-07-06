@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { createRoute, getAllRoutes } from "@/action/route.action";
+import { createRouteFormAction, getAllRoutes } from "@/action/route.action";
 import {
   AdminPageHeader,
   AdminPanel,
@@ -19,18 +21,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Route } from "@/lib/types";
+import { createRouteSchema, CreateRouteData } from "@/lib/validations/route";
 
 export default function AdminRoutesClient({
   initialRoutes,
 }: {
   initialRoutes: Route[];
 }) {
-  const [sourceCity, setSourceCity] = React.useState("");
-  const [destinationCity, setDestinationCity] = React.useState("");
-  const [distanceKm, setDistanceKm] = React.useState<number>(0);
-  const [estimatedDuration, setEstimatedDuration] = React.useState<number>(0);
   const [routes, setRoutes] = React.useState<Route[]>(initialRoutes);
   const [submitting, setSubmitting] = React.useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateRouteData>({
+    resolver: zodResolver(createRouteSchema) as never,
+    defaultValues: {
+      source_city: "",
+      destination_city: "",
+      distance_km: 0,
+      estimated_duration: 0,
+    },
+  });
 
   const loadRoutes = React.useCallback(async () => {
     const response = await getAllRoutes();
@@ -43,39 +57,27 @@ export default function AdminRoutesClient({
     toast.error(response.message || "Failed to load routes");
   }, []);
 
-  const handleCreateRoute = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (
-      !sourceCity ||
-      !destinationCity ||
-      distanceKm <= 0 ||
-      estimatedDuration <= 0
-    ) {
-      toast.warning("Fill all fields with valid values");
-      return;
-    }
-
+  const onSubmit = async (values: CreateRouteData) => {
     setSubmitting(true);
+    const formData = new FormData();
+    formData.append("source_city", values.source_city);
+    formData.append("destination_city", values.destination_city);
+    formData.append("distance_km", String(values.distance_km));
+    formData.append("estimated_duration", String(values.estimated_duration));
 
-    const response = await createRoute({
-      source_city: sourceCity,
-      destination_city: destinationCity,
-      distance_km: distanceKm,
-      estimated_duration: estimatedDuration,
-    });
-
-    if (response.success) {
+    const result = await createRouteFormAction(undefined, formData);
+    if (result.success) {
       toast.success("Route created successfully");
-      setSourceCity("");
-      setDestinationCity("");
-      setDistanceKm(0);
-      setEstimatedDuration(0);
+      reset({
+        source_city: "",
+        destination_city: "",
+        distance_km: 0,
+        estimated_duration: 0,
+      });
       await loadRoutes();
     } else {
-      toast.error(response.message || "Failed to create route");
+      toast.error(result.message || "Failed to create route");
     }
-
     setSubmitting(false);
   };
 
@@ -91,34 +93,60 @@ export default function AdminRoutesClient({
           title="Create Route"
           description="Add source, destination, distance, and duration."
         >
-          <form className="space-y-3" onSubmit={handleCreateRoute}>
-            <Input
-              value={sourceCity}
-              onChange={(event) => setSourceCity(event.target.value)}
-              placeholder="Source city"
-            />
-            <Input
-              value={destinationCity}
-              onChange={(event) => setDestinationCity(event.target.value)}
-              placeholder="Destination city"
-            />
+          <form
+            className="space-y-3"
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+          >
+            <div>
+              <Input
+                {...register("source_city")}
+                placeholder="Source city"
+              />
+              {errors.source_city && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.source_city.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Input
+                {...register("destination_city")}
+                placeholder="Destination city"
+              />
+              {errors.destination_city && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.destination_city.message}
+                </p>
+              )}
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                type="number"
-                value={distanceKm}
-                onChange={(event) => setDistanceKm(Number(event.target.value))}
-                placeholder="Distance (km)"
-                min={1}
-              />
-              <Input
-                type="number"
-                value={estimatedDuration}
-                onChange={(event) =>
-                  setEstimatedDuration(Number(event.target.value))
-                }
-                placeholder="Duration (minutes)"
-                min={1}
-              />
+              <div>
+                <Input
+                  type="number"
+                  {...register("distance_km")}
+                  placeholder="Distance (km)"
+                  min={1}
+                />
+                {errors.distance_km && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.distance_km.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Input
+                  type="number"
+                  {...register("estimated_duration")}
+                  placeholder="Duration (minutes)"
+                  min={1}
+                />
+                {errors.estimated_duration && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.estimated_duration.message}
+                  </p>
+                )}
+              </div>
             </div>
             <Button
               type="submit"

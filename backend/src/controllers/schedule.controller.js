@@ -1,5 +1,10 @@
 import pool from "../config/db.js";
 import { requireFields } from "../validations/requireFields.validate.js";
+import { weekdayBitForDate } from "../utils/weekday.js";
+import {
+  ensureTripsForDateRange,
+  ensureTripsForSchedule,
+} from "../services/tripGenerator.service.js";
 
 export const createSchedule = async (req, res) => {
   try {
@@ -12,18 +17,50 @@ export const createSchedule = async (req, res) => {
       "fare",
     );
 
-    const { route_id, bus_id, departure_time, arrival_time, fare } = req.body;
+    const {
+      route_id,
+      bus_id,
+      departure_time,
+      arrival_time,
+      fare,
+      repeat_days,
+    } = req.body;
+
+    // Default to every day when not provided.
+    const repeatBitmask =
+      repeat_days === undefined || repeat_days === null || repeat_days === ""
+        ? 127
+        : Number(repeat_days);
 
     const [result] = await pool.execute(
       `INSERT INTO schedules
-      (route_id, bus_id, departure_time, arrival_time, fare)
-      VALUES (?, ?, ?, ?, ?)`,
-      [route_id, bus_id, departure_time, arrival_time, fare],
+      (route_id, bus_id, departure_time, arrival_time, fare, repeat_days)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [route_id, bus_id, departure_time, arrival_time, fare, repeatBitmask],
     );
+
+    const scheduleId = result.insertId;
+
+    // Backfill upcoming 10 days of trips so this template is bookable now.
+    try {
+      const today = new Date();
+      const end = new Date(today.getTime() + 9 * 24 * 60 * 60 * 1000);
+      await ensureTripsForSchedule(
+        scheduleId,
+        today.toISOString().slice(0, 10),
+        end.toISOString().slice(0, 10),
+      );
+    } catch (e) {
+      console.error(
+        "[createSchedule] trip backfill failed for schedule",
+        scheduleId,
+        e,
+      );
+    }
 
     res.status(201).json({
       success: true,
-      scheduleId: result.insertId,
+      scheduleId,
     });
   } catch (error) {
     res.status(500).json({
@@ -33,41 +70,270 @@ export const createSchedule = async (req, res) => {
   }
 };
 
+// GET /schedules/search?source=&destination=&date=YYYY-MM-DD
+// Returns the materialized trips that run on the given date, joined back
+// to their schedule template / bus / route. `available_seats` is the live
+// count against `booking_seats.trip_id`.
 export const searchSchedules = async (req, res) => {
   try {
     requireFields(req.query, "source", "destination", "date");
     const { source, destination, date } = req.query;
 
-    const [schedules] = await pool.execute(
+    const dayBit = weekdayBitForDate(date);
+    if (dayBit === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "date must be a valid YYYY-MM-DD string",
+      });
+    }
+
+    // Lazy generator safety: if the cron hasn't materialized trips for
+    // this date yet, do it inline. Cheap (INSERT IGNORE) and idempotent.
+    try {
+      await ensureTripsForDateRange(date, date);
+    } catch (e) {
+      // Don't fail the search if the generator hiccups; just log and
+      // continue with whatever trips already exist.
+      console.error("[searchSchedules] lazy generator failed:", e.message);
+    }
+
+    const [trips] = await pool.execute(
       `SELECT
-          s.id,
+          t.id AS trip_id,
+          t.schedule_id,
+          t.trip_date,
+          t.fare AS actual_fare,
+          t.status AS trip_status,
+          t.actual_departure_time,
+          t.actual_arrival_time,
+          t.cancelled_reason,
+          s.route_id,
+          s.bus_id,
           s.departure_time,
           s.arrival_time,
-          s.fare,
+          s.fare AS schedule_fare,
+          s.repeat_days,
+          s.status AS schedule_status,
           b.bus_number,
-          b.operator_name,
-          b.capacity,
           b.bus_type,
+          b.capacity,
+          b.operator_name,
+          b.operator_id,
           r.source_city,
-          r.destination_city
-      FROM schedules s
+          r.destination_city,
+          (
+            SELECT COUNT(*)
+            FROM booking_seats bs
+            WHERE bs.trip_id = t.id
+          ) AS booked_seats
+      FROM trips t
+      JOIN schedules s ON t.schedule_id = s.id
       JOIN routes r ON s.route_id = r.id
       JOIN buses b ON s.bus_id = b.id
-      WHERE r.source_city = ?
+      WHERE t.trip_date = ?
+      AND t.status = 'SCHEDULED'
+      AND s.status = 'SCHEDULED'
+      AND (s.repeat_days & ?) = ?
+      AND r.source_city = ?
       AND r.destination_city = ?
-      AND DATE(s.departure_time) = ?
-      AND s.status = 'SCHEDULED'`,
-      [source, destination, date],
+      ORDER BY t.fare ASC, s.departure_time ASC`,
+      [date, dayBit, dayBit, source, destination],
     );
+
+    const data = trips.map((row) => ({
+      ...row,
+      available_seats: Math.max(
+        0,
+        Number(row.capacity) - Number(row.booked_seats || 0),
+      ),
+    }));
 
     res.json({
       success: true,
-      data: schedules,
+      date,
+      data,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message,
     });
+  }
+};
+
+// GET /schedules  (admin) - list all templates
+export const listSchedules = async (_req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT
+          s.id,
+          s.route_id,
+          s.bus_id,
+          s.departure_time,
+          s.arrival_time,
+          s.fare,
+          s.status,
+          s.repeat_days,
+          s.created_at,
+          s.updated_at,
+          b.bus_number,
+          b.bus_type,
+          b.capacity,
+          b.operator_name,
+          r.source_city,
+          r.destination_city
+      FROM schedules s
+      JOIN routes r ON s.route_id = r.id
+      JOIN buses b ON s.bus_id = b.id
+      ORDER BY s.created_at DESC`,
+    );
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /schedules/:id  (admin)
+export const getScheduleById = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid schedule id" });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT
+          s.id,
+          s.route_id,
+          s.bus_id,
+          s.departure_time,
+          s.arrival_time,
+          s.fare,
+          s.status,
+          s.repeat_days,
+          s.created_at,
+          s.updated_at,
+          b.bus_number,
+          b.bus_type,
+          b.capacity,
+          b.operator_name,
+          r.source_city,
+          r.destination_city
+      FROM schedules s
+      JOIN routes r ON s.route_id = r.id
+      JOIN buses b ON s.bus_id = b.id
+      WHERE s.id = ?`,
+      [id],
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Schedule not found" });
+    }
+
+    res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PUT /schedules/:id  (admin) - edit any subset
+export const updateSchedule = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid schedule id" });
+    }
+
+    const allowed = [
+      "route_id",
+      "bus_id",
+      "departure_time",
+      "arrival_time",
+      "fare",
+      "status",
+      "repeat_days",
+    ];
+
+    const fields = [];
+    const values = [];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(req.body[key]);
+      }
+    }
+
+    if (fields.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields to update" });
+    }
+
+    values.push(id);
+
+    const [result] = await pool.execute(
+      `UPDATE schedules SET ${fields.join(", ")} WHERE id = ?`,
+      values,
+    );
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Schedule not found" });
+    }
+
+    res.json({ success: true, scheduleId: id });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// DELETE /schedules/:id  (admin)
+export const deleteSchedule = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid schedule id" });
+    }
+
+    // Refuse to delete a template that has bookings on any of its trips.
+    const [bookings] = await pool.execute(
+      `SELECT COUNT(*) AS c
+       FROM bookings b
+       JOIN trips t ON b.trip_id = t.id
+       WHERE t.schedule_id = ?`,
+      [id],
+    );
+    if (Number(bookings[0].c) > 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Cannot delete a schedule with existing bookings. Mark it CANCELLED instead.",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `DELETE FROM schedules WHERE id = ?`,
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Schedule not found" });
+    }
+
+    res.json({ success: true, scheduleId: id });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

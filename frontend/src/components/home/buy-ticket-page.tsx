@@ -16,6 +16,7 @@ import type { SearchState } from "@/types/booking";
 import type { MyBookingsResponse } from "@/types/booking";
 import { useAuthModalStore } from "@/store/auth-modal-store";
 import Image from "next/image";
+import { Dot, Sparkle, Sparkles, Star } from "lucide-react";
 
 export default function BuyTicketPage({
   isAuthenticated,
@@ -25,19 +26,16 @@ export default function BuyTicketPage({
   const router = useRouter();
   const openLogin = useAuthModalStore((state) => state.openLogin);
   const [authenticated, setAuthenticated] = React.useState(isAuthenticated);
-  const [myTickets, setMyTickets] = React.useState<MyBookingsResponse | null>(
-    null,
-  );
-  const [myTicketsLoading, setMyTicketsLoading] = React.useState(false);
-  const [myTicketsError, setMyTicketsError] = React.useState<string | null>(
-    null,
-  );
+
 
   const ensureAuthenticated = React.useCallback(async () => {
     if (authenticated) {
       return true;
     }
 
+    // Only refresh when we have nothing else to go on.
+    // refreshSession() dedupes internally, so even if multiple paths call
+    // it concurrently only one backend round-trip happens.
     const refreshed = await refreshSession();
 
     if (refreshed) {
@@ -68,57 +66,13 @@ export default function BuyTicketPage({
       : "/bus-tickets/booking/bus/search";
   }, []);
 
-  const loadMyTickets = React.useCallback(async () => {
-    if (!authenticated) {
-      setMyTickets(null);
-      return;
-    }
-
-    setMyTicketsLoading(true);
-    setMyTicketsError(null);
-
-    const response = await getMyBookings();
-
-    if (response.success && response.data) {
-      setMyTickets(response.data);
-    } else {
-      setMyTickets(null);
-      setMyTicketsError(response.message || "Unable to load your tickets.");
-    }
-
-    setMyTicketsLoading(false);
-  }, [authenticated]);
-
-  React.useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadMyTickets();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [loadMyTickets]);
-
-  React.useEffect(() => {
-    if (bookingToast.visible) {
-      const timer = window.setTimeout(() => {
-        void loadMyTickets();
-      }, 0);
-
-      return () => window.clearTimeout(timer);
-    }
-
-    return undefined;
-  }, [bookingToast.visible, loadMyTickets]);
 
   return (
     <main
       className="relative min-h-[calc(100vh-64px)] overflow-hidden bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.1),transparent_30%),linear-gradient(180deg,#f7fbf8_0%,#ffffff_42%,#eef3ef_100%)] text-slate-950 
       dark:bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.06),transparent_30%),linear-gradient(180deg,#0a1220_0%,#0f172a_50%,#111827_100%)] dark:text-slate-100"
     >
-      {/* <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-emerald-300/18 blur-3xl dark:bg-emerald-500/8" />
-        <div className="absolute right-0 top-24 h-80 w-80 rounded-full bg-emerald-200/18 blur-3xl dark:bg-slate-600/10" />
-        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-slate-200/40 blur-3xl dark:bg-slate-700/10" />
-      </div> */}
+      
 
       <section className="relative mx-auto w-full ">
         <BookingToast
@@ -152,6 +106,16 @@ export default function BuyTicketPage({
               className="hidden h-auto w-full dark:block"
               sizes="100vw"
             />
+            <Sparkle strokeWidth={0.75}  className="absolute left-20 top-10 h-1 w-0.5 sm:h-1 sm:w-1 md:h-2 md:w-1.5 hidden dark:block  animate-pulse " />
+            <Sparkle strokeWidth={1}  className="absolute left-1/3 top-15 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Sparkles strokeWidth={1}  className="absolute left-1/2 top-8 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Dot strokeWidth={4}  className="absolute left-1/5 top-8 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Dot strokeWidth={3}  className="absolute left-1/6 top-1/3 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Dot strokeWidth={3}  className="absolute left-1/10 top-1/2 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Dot strokeWidth={4}  className="absolute left-15 top-2/3 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Dot strokeWidth={3}  className="absolute right-40 top-8 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+            <Star strokeWidth={1}  className="absolute right-23/100 top-1/4 h-0.5 w-0.5 sm:h-0.75 sm:w-0.75 md:h-1 md:w-1 hidden dark:block animate-pulse" />
+
           </div>
 
           {/* Search Form Card */}
@@ -170,14 +134,6 @@ export default function BuyTicketPage({
             </div>
           </div>
         </section>
-
-        {authenticated ? (
-          <MyTicketsSection
-            data={myTickets}
-            loading={myTicketsLoading}
-            error={myTicketsError}
-          />
-        ) : null}
       </section>
     </main>
   );

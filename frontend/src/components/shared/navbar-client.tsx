@@ -21,15 +21,15 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-import { ChevronDown, Settings, User, UserRound } from "lucide-react";
+import { ChevronDown, Menu, Settings, User, UserRound } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthModalStore } from "@/store/auth-modal-store";
-import { refreshSession } from "@/action/session.action";
 import { logout } from "@/action/auth.action";
+import { SidebarTrigger } from "../ui/sidebar";
 
 type AuthUser = {
   userId: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "operator";
   email: string;
   name?: string;
   phone?: string;
@@ -39,23 +39,15 @@ type AuthUser = {
 
 export default function NavbarClient({
   user,
-  refreshed,
+  hasSidebar = false,
 }: {
   user: AuthUser | null;
-  refreshed?: boolean;
+  hasSidebar?: boolean;
 }) {
   const router = useRouter();
   const openLogin = useAuthModalStore((state) => state.openLogin);
 
-  React.useEffect(() => {
-    if (refreshed) {
-      const sessionRefresh = async () => {
-        await refreshSession();
-      };
-      sessionRefresh();
-    }
-  }, [refreshed]);
-
+ 
   const isLoggedIn = !!user;
 
   // const getUserInitials = () => {
@@ -70,8 +62,25 @@ export default function NavbarClient({
   // };
 
   return (
-    <div className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-emerald-50/90 dark:bg-emerald-800/70 backdrop-blur-md px-4">
+    <div className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-emerald-50/90 dark:bg-emerald-800/70 backdrop-blur-md px-4">
+
       <div className="flex items-center gap-4 relative">
+        {hasSidebar && (
+        <div className = "relative mr-3 md:hidden">
+          <div className="z-50 opacity-0 absolute -top-3">
+            <SidebarTrigger
+            className="  -ml-2 rounded-lg hover:bg-accent hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
+            aria-label="Open sidebar menu"
+          >
+
+            <span className="sr-only">Open sidebar menu</span>
+          </SidebarTrigger>
+          </div>
+          <Menu  className="absolute -top-2 -left-1 w-5 h-5"/>
+        </div>
+        )}
+        
+        
         <>
           <Image
             onClick={() => router.push("/")}
@@ -93,7 +102,6 @@ export default function NavbarClient({
           />
         </>
       </div>
-
       <div className="relative flex gap-2 items-center">
         <ModeToggle />
 

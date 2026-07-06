@@ -8,6 +8,8 @@ import busRoutes from "./routes/bus.routes.js";
 import scheduleRoutes from "./routes/schedule.routes.js";
 import bookingRoutes from "./routes/booking.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import operatorRoutes from "./routes/operator.routes.js";
+import tripRoutes from "./routes/trip.routes.js";
 
 import corsMiddleware from "./config/cors.js";
 const app = express();
@@ -28,6 +30,10 @@ app.use("/api/schedules", scheduleRoutes);
 app.use("/api/bookings", bookingRoutes);
 
 app.use("/api/payments", paymentRoutes);
+
+app.use("/api/operators", operatorRoutes);
+
+app.use("/api/trips", tripRoutes);
 
 app.get("/", (req, res) => {
   res.send("Ticket Management API Running 🚀");

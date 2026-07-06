@@ -1,5 +1,12 @@
 "use server";
 import { serverRequest } from "@/action/server-request.action";
+import { parseFormData, formatZodErrors } from "@/action/form-data";
+import {
+  createBookingSchema,
+  cancelBookingSchema,
+  CreateBookingData,
+  CancelBookingData,
+} from "@/lib/validations/booking";
 import type { BookingTicketDetails } from "@/lib/types";
 import type { MyBookingsResponse } from "@/types/booking";
 
@@ -7,6 +14,23 @@ type ActionFailure = {
   success: false;
   message: string;
 };
+
+type FormActionResult<T = unknown> =
+  | { success: true; data?: T }
+  | { success: false; message: string; fieldErrors?: Record<string, string> };
+
+function toFieldErrors(error: unknown): Record<string, string> | undefined {
+  if (error && typeof error === "object" && "issues" in (error as Record<string, unknown>)) {
+    const issues = (error as { issues: { path: (string | number)[]; message: string }[] }).issues;
+    const out: Record<string, string> = {};
+    for (const issue of issues) {
+      const key = issue.path.join(".");
+      if (key && !out[key]) out[key] = issue.message;
+    }
+    return out;
+  }
+  return undefined;
+}
 
 type CreateBookingResponse =
   | {
@@ -33,7 +57,7 @@ type BookingDetailsResponse =
   | ActionFailure;
 
 export const createBooking = async (payload: {
-  scheduleId: number;
+  tripId: number;
   seatNumbers: string[];
   totalAmount?: number;
 }): Promise<CreateBookingResponse> => {
@@ -103,11 +127,11 @@ export const cancelBooking = async (
 };
 
 export const getAvailableSeats = async (
-  scheduleId: number,
+  tripId: number,
 ): Promise<AvailableSeatsResponse> => {
   try {
     return await serverRequest<AvailableSeatsResponse>(
-      `bookings/available-seats/${scheduleId}`,
+      `bookings/available-seats/${tripId}`,
       {
         method: "GET",
       },
@@ -170,4 +194,70 @@ export const getBookingsByDay = async (
     console.error("Error fetching bookings by day:", error);
     return { success: false, message: "Failed to fetch bookings for the day" };
   }
+};
+
+/**
+ * Server action that validates a FormData payload against the Zod
+ * create-booking schema before forwarding to the API. The `seatNumbers`
+ * field may be repeated multiple times in the form.
+ */
+export const createBookingFormAction = async (
+  _prev: FormActionResult<CreateBookingResponse> | undefined,
+  formData: FormData,
+): Promise<FormActionResult<CreateBookingResponse>> => {
+  let parsed: CreateBookingData;
+  try {
+    parsed = (await parseFormData(
+      formData,
+      createBookingSchema,
+    )) as CreateBookingData;
+  } catch (error) {
+    const zodError = error as import("zod").ZodError;
+    return {
+      success: false,
+      message: formatZodErrors(zodError),
+      fieldErrors: toFieldErrors(zodError),
+    };
+  }
+
+  const result = await createBooking({
+    tripId: parsed.tripId,
+    seatNumbers: parsed.seatNumbers,
+    totalAmount: parsed.totalAmount,
+  });
+
+  if (!result.success) {
+    return { success: false, message: result.message || "Booking failed" };
+  }
+  return { success: true, data: result };
+};
+
+/**
+ * Server action that validates a FormData payload against the Zod
+ * cancel-booking schema before forwarding to the API.
+ */
+export const cancelBookingFormAction = async (
+  _prev: FormActionResult | undefined,
+  formData: FormData,
+): Promise<FormActionResult> => {
+  let parsed: CancelBookingData;
+  try {
+    parsed = (await parseFormData(
+      formData,
+      cancelBookingSchema,
+    )) as CancelBookingData;
+  } catch (error) {
+    const zodError = error as import("zod").ZodError;
+    return {
+      success: false,
+      message: formatZodErrors(zodError),
+      fieldErrors: toFieldErrors(zodError),
+    };
+  }
+
+  const result = await cancelBooking(parsed.bookingId);
+  if (!result.success) {
+    return { success: false, message: result.message || "Cancel failed" };
+  }
+  return { success: true, data: result };
 };

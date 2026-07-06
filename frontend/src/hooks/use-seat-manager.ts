@@ -10,13 +10,14 @@ import {
 } from "@/lib/seat-utils";
 
 import { useSeatSelection } from "@/hooks/use-seat-selection";
+import type { TripSearchResult } from "@/types/booking";
 
 export const MAX_SEATS_PER_BOOKING = 4;
 
 export function useSeatManager() {
   const {
-    activeSchedule,
-    setActiveSchedule,
+    activeTrip,
+    setActiveTrip,
     availableSeats,
     setAvailableSeats,
     setLoading,
@@ -35,15 +36,15 @@ export function useSeatManager() {
   const seatRows = React.useMemo(
     () =>
       generateSeatRows(
-        activeSchedule?.capacity ?? 0,
+        activeTrip?.capacity ?? 0,
         availableSeats,
       ),
-    [activeSchedule, availableSeats],
+    [activeTrip, availableSeats],
   );
 
-  const loadAvailableSeatsForSchedule =
+  const loadAvailableSeatsForTrip =
     React.useCallback(
-      async (schedule: any) => {
+      async (trip: TripSearchResult) => {
         setLoading((prev) => ({
           ...prev,
           seats: true,
@@ -51,13 +52,13 @@ export function useSeatManager() {
 
         clearSelectedSeats();
 
-        setActiveSchedule(schedule);
+        setActiveTrip(trip);
 
         setSeatSheetOpen(true);
 
         try {
           const response =
-            await getAvailableSeats(schedule.id);
+            await getAvailableSeats(trip.trip_id);
 
           if (
             response?.success &&
@@ -88,7 +89,7 @@ export function useSeatManager() {
       },
       [
         clearSelectedSeats,
-        setActiveSchedule,
+        setActiveTrip,
         setAvailableSeats,
         setLoading,
         setStatus,
@@ -101,6 +102,6 @@ export function useSeatManager() {
     seatRows,
     toggleSeat,
     clearSelectedSeats,
-    loadAvailableSeatsForSchedule,
+    loadAvailableSeatsForTrip,
   };
 }

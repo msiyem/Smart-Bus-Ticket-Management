@@ -8,8 +8,6 @@ type ServerRequestOptions = RequestInit & {
   auth?: boolean;
 };
 
-let refreshPromise: Promise<boolean> | null = null;
-
 export async function serverRequest<T>(
   endpoint: string,
   options: ServerRequestOptions = {},
@@ -39,43 +37,51 @@ export async function serverRequest<T>(
     });
   };
 
+  // Single source of proactive refresh lives in proxy.ts. It runs on
+  // the request boundary, can mutate the outgoing response cookies
+  // (which serverRequest — invoked from a Server Component render —
+  // cannot), and forwards the rotated Set-Cookie to the browser. So
+  // we just read whatever cookie state proxy.ts left us and trust it.
+  //
+  // We do NOT proactively call refreshSession() here: doing so on the
+  // same request that proxy.ts just processed would race the proxy's
+  // rotation (the request's cookie snapshot still holds the old token)
+  // and produce a guaranteed 403 from the backend.
   let token = requiresAuth ? await getCookie("accessToken") : null;
-
-  let refreshed = false;
-
-  if (requiresAuth && !token) {
-    if (!refreshPromise) {
-      refreshPromise = refreshSession();
-    }
-
-    refreshed = await refreshPromise;
-    refreshPromise = null;
-
-    token = refreshed ? await getCookie("accessToken") : null;
-  }
 
   let response = await request(token);
 
-  if (requiresAuth && response.status === 401 && !refreshed) {
-    if (!refreshPromise) {
-      refreshPromise = refreshSession();
-    }
-
-    refreshed = await refreshPromise;
-    refreshPromise = null;
-
-    if (refreshed) {
-      token = await getCookie("accessToken");
-
+  if (requiresAuth) {
+    if (response.status === 401) {
+      // refreshSession returns the freshly minted accessToken directly,
+      // not a boolean. We need the new token for the immediate retry,
+      // and re-reading from the cookie jar would still return the
+      // expired one when this action was invoked from a Server
+      // Component render path (the inner Route Handler's Set-Cookie
+      // doesn't propagate into the outer action's request snapshot).
+      const newToken = await refreshSession();
+      if (!newToken) {
+        await deleteCookie("accessToken");
+        await deleteCookie("refreshToken");
+        await deleteCookie("sessionId");
+        throw new Error("Session expired");
+      }
+      token = newToken;
       response = await request(token);
-    } else {
-      await deleteCookie("accessToken");
 
-      await deleteCookie("refreshToken");
-
-      await deleteCookie("sessionId");
-
-      throw new Error("Session expired");
+      // If the retry STILL fails with 401, the backend genuinely
+      // rejects the new token — bail out instead of looping. The
+      // deleteCookie calls below are best-effort: when this action
+      // runs from a Server Component render path the mutation
+      // context is unavailable and cookies.ts silently no-ops on
+      // that one specific error. The user will see the "Session
+      // expired" error message on the client.
+      if (response.status === 401) {
+        await deleteCookie("accessToken");
+        await deleteCookie("refreshToken");
+        await deleteCookie("sessionId");
+        throw new Error("Session expired");
+      }
     }
   }
 

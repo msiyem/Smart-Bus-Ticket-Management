@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import React from "react";
 import { usePathname } from "next/navigation";
 import {
   BusFront,
+  Building2,
+  CalendarDays,
   LayoutDashboard,
   Map,
   Route,
   Users,
-  CalendarDays,
 } from "lucide-react";
 
 import {
@@ -17,12 +17,16 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
+import Image from "next/image";
+import ticketDark from "../../../public/ticket-mama-dark-new.png";
+import ticketLight from "../../../public/ticket-mama-light-new.png";
+import { useRef } from "react";
 
 const adminNavItems = [
   { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -30,36 +34,65 @@ const adminNavItems = [
   { title: "Routes", href: "/admin/routes", icon: Route },
   { title: "Buses", href: "/admin/buses", icon: BusFront },
   { title: "Schedules", href: "/admin/schedules", icon: Map },
+  { title: "Operators", href: "/admin/operators", icon: Building2 },
   { title: "Users", href: "/admin/users", icon: Users },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
     <Sidebar
-      className="top-16 h-[calc(100svh-4rem)] border-r border-sidebar-border/60"
       variant="inset"
       collapsible="icon"
+      style={
+        {
+          "--sidebar-width": "16rem",
+          "--sidebar-width-mobile": "18rem",
+          "--sidebar-width-icon": "4rem",
+        } as React.CSSProperties
+      }
+      className="
+        border-r
+        border-border
+        bg-background
+        transition-colors
+      "
     >
-      <SidebarHeader>
-        <div className="rounded-xl border border-emerald-200/70 bg-white/70 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">
-            Admin
-          </p>
-          <p className="mt-1 text-sm font-medium text-foreground">
-            Control panel
-          </p>
+      <SidebarHeader
+        className="border-b border-border cursor-pointer hover:bg-accent/50 transition-colors hover:text-emerald-600 dark:hover:text-emerald-400"
+        onClick={() => triggerRef.current?.click()}
+      >
+        <div className="flex items-center justify-between px-4 py-1 md:mt-14">
+          <div className="overflow-hidden">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+              Admin
+            </p>
+          </div>
+
+          <SidebarTrigger
+            ref={triggerRef}
+            onClick={(e) => e.stopPropagation()}
+            className="
+        rounded-lg
+        hover:bg-accent
+        hover:text-emerald-600
+        
+        dark:hover:text-emerald-400
+        transition-all
+      "
+          />
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="py-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1 px-1">
               {adminNavItems.map((item) => {
                 const Icon = item.icon;
+
                 const isActive =
                   item.href === "/admin"
                     ? pathname === "/admin"
@@ -70,12 +103,30 @@ export default function AdminSidebar() {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild
-                      isActive={isActive}
                       tooltip={item.title}
+                      isActive={isActive}
+                      className={`
+                        h-9
+                        rounded-sm
+                        transition-all
+                        duration-300
+
+                        ${
+                          isActive
+                            ? " !bg-emerald-600/70 !text-white hover:bg-emerald-700 hover:text-white dark:bg-emerald-500/50 dark:hover:bg-emerald-600/80"
+                            : "hover:bg-emerald-100/70 hover:text-emerald-700 dark:hover:bg-emerald-950 dark:hover:text-emerald-300"
+                        }
+                      `}
                     >
-                      <Link href={item.href}>
-                        <Icon />
-                        <span>{item.title}</span>
+                      <Link
+                        href={item.href}
+                        className="flex items-center gap-3"
+                      >
+                        <Icon className="h-5 w-5 shrink-0" />
+
+                        <span className="truncate font-medium">
+                          {item.title}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -4,7 +4,6 @@ import bcrypt from "bcrypt";
 export async function getAllUsersController(req, res) {
   try {
     const [rows] = await pool.query("SELECT * FROM users");
-    console.log("Fetched users:", rows);
     res.json({
       success: true,
       message: "All users fetched",
@@ -85,6 +84,59 @@ export async function registerUserController(req, res) {
     res.status(500).json({
       success: false,
       message: "Error registering user",
+    });
+  }
+}
+
+/**
+ * POST /api/users
+ * Admin-only: create a user with a specified role (user / admin / operator).
+ * Validated by createUserAdminSchema via the validate middleware.
+ */
+export async function adminCreateUserController(req, res) {
+  try {
+    const { name, username, email, password, address, role } = req.body;
+
+    const [existingEmail] = await pool.query(
+      "SELECT id FROM users WHERE email = ?",
+      [email],
+    );
+    if (existingEmail.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    if (username) {
+      const [existingUsername] = await pool.query(
+        "SELECT id FROM users WHERE username = ?",
+        [username],
+      );
+      if (existingUsername.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "Username is already taken",
+        });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const [result] = await pool.query(
+      "INSERT INTO users (name, username, email, password_hash, address, role) VALUES (?, ?, ?, ?, ?, ?)",
+      [name, username || null, email, passwordHash, address, role],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: { userId: result.insertId, role },
+    });
+  } catch (error) {
+    console.error("Error admin-creating user:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating user",
     });
   }
 }
