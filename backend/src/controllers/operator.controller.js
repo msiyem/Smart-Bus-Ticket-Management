@@ -3,10 +3,10 @@ import pool from "../config/db.js";
 const shapeOperator = (row) => ({
   id: row.id,
   owner_user_id: row.owner_user_id,
-  company_name: row.company_name,
-  contact_email: row.contact_email,
-  contact_phone: row.contact_phone,
-  is_active: row.is_active === 1 || row.is_active === true,
+  name: row.name,
+  email: row.email,
+  phone: row.phone,
+  address: row.address,
   created_at: row.created_at,
   updated_at: row.updated_at,
   owner_name: row.owner_name ?? null,
@@ -20,15 +20,9 @@ const SELECT_OPERATOR_BASE = `
   LEFT JOIN users u ON bo.owner_user_id = u.id
 `;
 
-/**
- * POST /api/operators
- * Admin creates a bus_operator row.
- */
 export const createOperator = async (req, res) => {
   try {
-    const { owner_user_id, company_name, contact_email, contact_phone } =
-      req.body;
-    const is_active = req.body.is_active ?? 1;
+    const { owner_user_id, name, email, phone, address } = req.body;
 
     const [ownerRows] = await pool.execute(
       `SELECT id, role FROM users WHERE id = ?`,
@@ -60,15 +54,9 @@ export const createOperator = async (req, res) => {
 
     const [result] = await pool.execute(
       `INSERT INTO bus_operators
-        (owner_user_id, company_name, contact_email, contact_phone, is_active)
+        (owner_user_id, name, email, phone, address)
        VALUES (?, ?, ?, ?, ?)`,
-      [
-        owner_user_id,
-        company_name,
-        contact_email,
-        contact_phone || null,
-        is_active,
-      ],
+      [owner_user_id, name, email || null, phone || null, address || null],
     );
 
     res.status(201).json({ success: true, operatorId: result.insertId });
@@ -77,10 +65,6 @@ export const createOperator = async (req, res) => {
   }
 };
 
-/**
- * GET /api/operators/me
- * Operator fetches their own bus_operator row.
- */
 export const getMyOperator = async (req, res) => {
   try {
     const { role, bus_operator_id } = req.user || {};
@@ -104,10 +88,6 @@ export const getMyOperator = async (req, res) => {
   }
 };
 
-/**
- * GET /api/operators
- * Admin: list all.
- */
 export const listOperators = async (_req, res) => {
   try {
     const [rows] = await pool.query(
@@ -119,9 +99,6 @@ export const listOperators = async (_req, res) => {
   }
 };
 
-/**
- * GET /api/operators/:id
- */
 export const getOperatorById = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -145,10 +122,6 @@ export const getOperatorById = async (req, res) => {
   }
 };
 
-/**
- * PUT /api/operators/:id
- * Admin only.
- */
 export const updateOperator = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -158,7 +131,7 @@ export const updateOperator = async (req, res) => {
         .json({ success: false, message: "Invalid operator id" });
     }
 
-    const allowed = ["company_name", "contact_email", "contact_phone", "is_active"];
+    const allowed = ["name", "email", "phone", "address"];
     const fields = [];
     const values = [];
     for (const key of allowed) {
@@ -190,10 +163,6 @@ export const updateOperator = async (req, res) => {
   }
 };
 
-/**
- * DELETE /api/operators/:id
- * Admin only. Refuses if operator owns buses.
- */
 export const deleteOperator = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -230,10 +199,6 @@ export const deleteOperator = async (req, res) => {
   }
 };
 
-/**
- * GET /api/operators/:id/buses
- * Admin only.
- */
 export const getOperatorBuses = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -254,10 +219,6 @@ export const getOperatorBuses = async (req, res) => {
   }
 };
 
-/**
- * GET /api/operators/:id/schedules
- * Admin only.
- */
 export const getOperatorSchedules = async (req, res) => {
   try {
     const id = Number(req.params.id);

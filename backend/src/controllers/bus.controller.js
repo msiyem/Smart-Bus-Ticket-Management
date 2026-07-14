@@ -12,11 +12,25 @@ export const createBus = async (req, res) => {
     );
     const { bus_number, bus_type, capacity, operator_name } = req.body;
 
+    const [operatorRows] = await pool.execute(
+      `SELECT id FROM bus_operators WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1`,
+      [operator_name],
+    );
+
+    if (operatorRows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Operator "${operator_name}" not found. Create the operator first.`,
+      });
+    }
+
+    const operatorId = operatorRows[0].id;
+
     const [result] = await pool.execute(
       `INSERT INTO buses
-      (bus_number, bus_type, capacity, operator_name)
-      VALUES (?, ?, ?, ?)`,
-      [bus_number, bus_type, capacity, operator_name],
+      (bus_number, bus_type, capacity, operator_name, operator_id)
+      VALUES (?, ?, ?, ?, ?)`,
+      [bus_number, bus_type, capacity, operator_name, operatorId],
     );
 
     res.status(201).json({

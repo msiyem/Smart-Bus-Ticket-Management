@@ -14,10 +14,7 @@ const iso8601 = z
     message: "Must be a valid ISO-8601 timestamp",
   });
 
-/**
- * PATCH /api/trips/:id body
- * At least one mutable field is required.
- */
+// At least one mutable field is required.
 export const updateTripSchema = z
   .object({
     fare: z.coerce
@@ -46,9 +43,6 @@ export const updateTripSchema = z
 
 export type UpdateTripData = z.infer<typeof updateTripSchema>;
 
-/**
- * POST /api/trips/:id/cancel body
- */
 export const cancelTripSchema = z.object({
   cancelled_reason: z
     .string()
@@ -60,9 +54,6 @@ export const cancelTripSchema = z.object({
 
 export type CancelTripData = z.infer<typeof cancelTripSchema>;
 
-/**
- * GET /api/trips query string
- */
 export const listTripsQuerySchema = z.object({
   schedule_id: z.coerce
     .number()

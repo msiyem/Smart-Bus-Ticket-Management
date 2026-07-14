@@ -79,7 +79,7 @@ export function DateTimePicker({
           <CalendarIcon className="mr-2 h-4 w-4 text-emerald-600 dark:text-emerald-400" />
 
           {selectedDate ? (
-            format(selectedDate, "PPP • hh:mm a")
+            `${format(selectedDate, "dd/MM/yyyy")} • ${format(selectedDate, "hh:mm a")}`
           ) : (
             <span className="text-slate-500">
               {placeholder}

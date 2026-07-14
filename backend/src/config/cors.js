@@ -7,7 +7,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow Postman / server-to-server requests
+    // Missing Origin header means Postman / server-to-server — allow it.
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {

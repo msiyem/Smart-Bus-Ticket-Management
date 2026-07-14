@@ -4,19 +4,6 @@ import * as React from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import RoleSidebar from "./role-sidebar";
 
-/**
- * Returns the current responsive breakpoint deterministically.
- *
- * - "mobile" : < 768px  (Tailwind `md`)  — sidebar should render as a sheet
- * - "md"     : 768–1023px                 — sidebar default = icon-only (collapsed)
- * - "lg"     : >= 1024px                  — sidebar default = fully expanded
- *
- * On the server / first render we cannot read `window`, so we assume the
- * largest breakpoint (`lg`) and let the post-mount effect correct the state
- * if the user is actually on a smaller screen. This avoids the
- * "undefined → boolean" double render that `useIsMobile` introduces and
- * keeps `defaultOpen` always defined.
- */
 type Breakpoint = "mobile" | "md" | "lg";
 
 function getBreakpoint(): Breakpoint {

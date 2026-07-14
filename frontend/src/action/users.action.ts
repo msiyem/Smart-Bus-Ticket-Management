@@ -29,15 +29,12 @@ export const getAllUsers = async (): Promise<GetUsersResponse> => {
     });
   } catch (error) {
     console.error("Error fetching users:", error);
-    return { success: false, message: "Failed to fetch users" };
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch users";
+    return { success: false, message };
   }
 };
 
-/**
- * POST /api/users
- * Admin-only endpoint that creates a user with the given role
- * (user | admin | operator). Returns the created user record.
- */
 export const createUserAction = async (
   payload: CreateUserPayload,
 ): Promise<UserResponse> => {
@@ -49,7 +46,9 @@ export const createUserAction = async (
     });
   } catch (error) {
     console.error("Error creating user:", error);
-    return { success: false, message: "Failed to create user" };
+    const message =
+      error instanceof Error ? error.message : "Failed to create user";
+    return { success: false, message };
   }
 };
 
@@ -61,7 +60,9 @@ export const getUser = async (id: number): Promise<UserResponse> => {
     });
   } catch (error) {
     console.error("Error fetching user:", error);
-    return { success: false, message: "Failed to fetch user" };
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch user";
+    return { success: false, message };
   }
 };
 
@@ -79,7 +80,9 @@ export const updateUserAction = async (
     });
   } catch (error) {
     console.error("Error updating user:", error);
-    return { success: false, message: "Failed to update user" };
+    const message =
+      error instanceof Error ? error.message : "Failed to update user";
+    return { success: false, message };
   }
 };
 
@@ -93,6 +96,8 @@ export const deleteUserAction = async (
     );
   } catch (error) {
     console.error("Error deleting user:", error);
-    return { success: false, message: "Failed to delete user" };
+    const message =
+      error instanceof Error ? error.message : "Failed to delete user";
+    return { success: false, message };
   }
 };

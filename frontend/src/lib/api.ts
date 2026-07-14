@@ -7,20 +7,14 @@ export interface APIResponse<T = null> {
   data?: T;
 }
 
-import { refreshSession } from "@/action/session.action";
-
-// refreshSession() owns its own in-flight promise (see session.action.ts),
-// so concurrent callers automatically collapse into a single backend refresh.
-
 export async function API<T>(
   endpoint: string,
   options: RequestInit = {},
-  retry = false,
 ): Promise<T> {
   const url = `${API_BASE_URL}/${endpoint.replace(/^\//, "")}`;
 
   const res = await fetch(url, {
-    credentials: "include", //cookie-based auth
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -28,22 +22,9 @@ export async function API<T>(
     ...options,
   });
 
-  // auto refresh on 401 and retry once
-
-  if (res.status === 401 && !retry) {
-    // refreshSession returns the new accessToken when successful
-    // (Route Handler has also attached Set-Cookie to its response,
-    // which this browser picks up automatically via credentials: include).
-    const newToken = await refreshSession();
-
-    if (newToken) {
-      return API<T>(endpoint, options, true);
-    }
-
+  if (res.status === 401) {
     throw new Error("SESSION_EXPIRED");
   }
-
-  // error handling
 
   if (!res.ok) {
     let message = "Request failed";

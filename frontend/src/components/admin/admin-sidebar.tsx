@@ -29,13 +29,13 @@ import ticketLight from "../../../public/ticket-mama-light-new.png";
 import { useRef } from "react";
 
 const adminNavItems = [
-  { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { title: "Day Bookings", href: "/admin/day-bookings", icon: CalendarDays },
-  { title: "Routes", href: "/admin/routes", icon: Route },
-  { title: "Buses", href: "/admin/buses", icon: BusFront },
-  { title: "Schedules", href: "/admin/schedules", icon: Map },
-  { title: "Operators", href: "/admin/operators", icon: Building2 },
-  { title: "Users", href: "/admin/users", icon: Users },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Day Bookings", href: "/day-bookings", icon: CalendarDays },
+  { title: "Routes", href: "/routes", icon: Route },
+  { title: "Buses", href: "/buses", icon: BusFront },
+  { title: "Schedules", href: "/schedules", icon: Map },
+  { title: "Operators", href: "/operators", icon: Building2 },
+  { title: "Users", href: "/users", icon: Users },
 ];
 
 export default function AdminSidebar() {
@@ -94,8 +94,8 @@ export default function AdminSidebar() {
                 const Icon = item.icon;
 
                 const isActive =
-                  item.href === "/admin"
-                    ? pathname === "/admin"
+                  item.href === "/dashboard"
+                    ? pathname === "/dashboard"
                     : pathname === item.href ||
                       pathname.startsWith(`${item.href}/`);
 

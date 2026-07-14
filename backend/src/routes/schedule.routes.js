@@ -21,7 +21,6 @@ const router = express.Router();
 // Public search (no auth required)
 router.get("/search", searchSchedules);
 
-// Admin: list / get / update / delete templates
 router.get(
   "/",
   Authenticate,

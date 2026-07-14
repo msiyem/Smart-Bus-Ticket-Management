@@ -15,9 +15,11 @@ export default async function AdminOperatorsPage() {
       : [];
 
   const users: User[] =
-    usersResponse.success && Array.isArray(usersResponse)
-      ? (usersResponse as User[])
+    usersResponse.success && Array.isArray(usersResponse.data)
+      ? (usersResponse.data as User[])
       : [];
+  console.log("operators", operators);
+  console.log("users", users);
 
   return (
     <AdminOperatorsClient initialOperators={operators} initialUsers={users} />

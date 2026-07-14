@@ -1,5 +1,3 @@
-// constants/cities.ts
-
 export const BANGLADESH_CITIES = [
   "Dhaka",
   "Chattogram",

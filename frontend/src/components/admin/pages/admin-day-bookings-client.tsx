@@ -14,8 +14,7 @@ export default function AdminDayBookingsClient({
   const [date, setDate] = React.useState(initialDate);
 
   const go = (d: string) => {
-    // navigate preserving other params
-    router.push(`/admin/day-bookings?date=${encodeURIComponent(d)}`);
+    router.push(`/day-bookings?date=${encodeURIComponent(d)}`);
   };
 
   return (
@@ -56,22 +55,22 @@ export default function AdminDayBookingsClient({
           </div>
         ) : (
           initialSchedules.map((s) => (
-            <div key={s.schedule.id} className="rounded border p-4">
+            <div key={s.trip.id} className="rounded border p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm text-slate-500">
-                    {s.schedule.source_city} → {s.schedule.destination_city}
+                    {s.trip.source_city} → {s.trip.destination_city}
                   </div>
                   <div className="text-lg font-semibold">
-                    {s.schedule.bus.bus_number} — {s.schedule.bus.bus_type}
+                    {s.trip.bus.bus_number} — {s.trip.bus.bus_type}
                   </div>
                   <div className="text-sm text-slate-500">
                     Departure:{" "}
-                    {new Date(s.schedule.departure_time).toLocaleString()}
+                    {new Date(s.trip.departure_time).toLocaleString()}
                   </div>
                 </div>
                 <div className="text-right text-sm text-slate-600">
-                  Fare: ৳{s.schedule.fare}
+                  Fare: ৳{s.trip.fare}
                 </div>
               </div>
 

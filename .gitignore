@@ -2,6 +2,7 @@
 # Editor / tool caches
 # ──────────────────────────────────────────────────────────────────────────────
 .puku/
+.puku-cli/
 .vscode/
 .idea/
 *.swp
@@ -49,6 +50,7 @@ backend/pnpm-debug.log*
 # Frontend (Next.js) – env & logs
 # ──────────────────────────────────────────────────────────────────────────────
 frontend/.env
+frontend/docs
 frontend/.env.local
 frontend/.env.*.local
 frontend/.vercel

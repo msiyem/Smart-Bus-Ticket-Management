@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-/**
- * Mirrors backend `createUserAdminSchema`.
- * Used by the admin "Create User" form driven by react-hook-form + zodResolver.
- */
 export const createUserAdminSchema = z
   .object({
     name: z

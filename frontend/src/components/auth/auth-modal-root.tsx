@@ -1,4 +1,3 @@
-// components/auth/auth-modal-root.tsx
 "use client";
 
 import LoginModal from "./login-modal";

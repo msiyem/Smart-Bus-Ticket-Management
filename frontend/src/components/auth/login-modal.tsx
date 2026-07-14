@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import {
   Card,
@@ -26,8 +25,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import googleLogo from "../../../public/google-logo.png";
 import { LoginUserData, loginUserSchema } from "@/lib/validations/login";
-
-import { login } from "@/action/auth.action";
+import { clientLogin } from "@/lib/auth/client";
+import { useGoogleLogin } from "@/lib/auth/useGoogleLogin";
+import { useUserStore } from "@/store/userStore";
 
 export default function LoginModal({
   open,
@@ -42,32 +42,105 @@ export default function LoginModal({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError,
   } = useForm<LoginUserData>({
     defaultValues: { email: "", password: "" },
     resolver: zodResolver(loginUserSchema),
   });
 
   const [showPassword, setShowPassword] = React.useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = React.useState(false);
-  const router = useRouter();
-  const onsubmit = async (data: LoginUserData) => {
-    try {
-      const promise = login(data);
+  const google = useGoogleLogin();
+  const googleBusy =
+    google.status === "submitting" ||
+    google.status === "loading";
 
-      toast.promise(promise, {
-        loading: "Logging in...",
-        success: "Logged in successfully!",
-        error: (err) => err.message || "Failed to log in.",
-        richColors: true,
+  const setUser = useUserStore((state) => state.setUser);
+
+  const onsubmit = async (data: LoginUserData) => {
+    toast.loading("Logging in...", {
+      id: "login",
+    });
+
+    const result = await clientLogin(data.email, data.password);
+
+    if (!result.success) {
+      toast.error(result.message || "Login failed", {
+        id: "login",
       });
 
-      await promise;
+      setError("password", {
+        message: result.message || "Login failed",
+      });
+
+      return;
+    }
+
+    if (result.user) {
+      setUser({
+        id: Number(result.user.id),
+        name: result.user.name ?? null,
+        username: result.user.username ?? null,
+        email: result.user.email,
+        role: result.user.role,
+        profile_image: result.user.profile_image ?? null,
+      });
+    }
+
+    toast.success("Logged in successfully!", {
+      id: "login",
+    });
+
+    onOpenChange?.(false);
+
+    const target =
+      result.user?.role === "admin"
+        ? "/dashboard"
+        : result.user?.role === "operator"
+          ? "/operator-dashboard"
+          : "/";
+
+    window.location.assign(target);
+  };
+
+  const handleGoogle = async () => {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+      toast.error(
+        "Google login is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local.",
+      );
+      return;
+    }
+
+    const promise = google.loginWithGoogle();
+
+    toast.promise(promise, {
+      loading: "Connecting to Google...",
+      success: "Logged in with Google!",
+      error: (err) => err?.message || "Google login failed",
+      richColors: true,
+    });
+
+    const result = await promise;
+
+    if (result.success) {
+      if (result.user) {
+        setUser({
+          id: Number(result.user.id),
+          name: result.user.name ?? null,
+          username: result.user.username ?? null,
+          email: result.user.email,
+          role: result.user.role,
+          profile_image: result.user.profile_image ?? null,
+        });
+      }
 
       onOpenChange?.(false);
-
-      router.refresh();
-    } catch (error) {
-      console.error("Login failed:", error);
+      const target =
+        result.user?.role === "admin"
+          ? "/dashboard"
+          : result.user?.role === "operator"
+            ? "/operator-dashboard"
+            : "/";
+      window.location.href = target;
     }
   };
 
@@ -92,34 +165,38 @@ export default function LoginModal({
               type="button"
               variant="outline"
               className="w-full flex items-center justify-center gap-3"
-              onClick={async () => {
-                try {
-                  setGoogleSubmitting(true);
-
-                  // TODO: integrate real Google OAuth
-                  await new Promise((res) => setTimeout(res, 1500));
-
-                  toast.info("Google login coming soon ", {
-                    richColors: true,
-                  });
-                } finally {
-                  setGoogleSubmitting(false);
-                }
-              }}
+              onClick={handleGoogle}
+              disabled={googleBusy || google.status === "error"}
             >
-              {googleSubmitting ? (
+              {googleBusy ? (
                 <>
                   <LoaderCircle className="animate-spin w-4 h-4" />
-                  <Image src={googleLogo} alt="Google" width={18} height={18} />
-                  Continuing.....
+                  <Image
+                    src={googleLogo}
+                    alt="Google"
+                    width={18}
+                    height={18}
+                  />
+                  Continuing...
                 </>
               ) : (
                 <>
-                  <Image src={googleLogo} alt="Google" width={18} height={18} />
+                  <Image
+                    src={googleLogo}
+                    alt="Google"
+                    width={18}
+                    height={18}
+                  />
                   Continue with Google
                 </>
               )}
             </Button>
+
+            {google.status === "error" && google.error && (
+              <p className="text-xs text-destructive text-center">
+                {google.error}
+              </p>
+            )}
 
             {/* Divider */}
             <div className="flex items-center gap-3 text-sm text-muted-foreground">

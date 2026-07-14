@@ -1,12 +1,5 @@
 import pool from "../config/db.js";
 
-/**
- * requireOperator
- * - Allows admins and operators.
- * - For operators, looks up bus_operators row by owner_user_id and attaches it
- *   to req.user.bus_operator_id so downstream queries can scope by operator.
- * - 403 if the operator account is not linked to a bus_operator row.
- */
 export const requireOperator = async (req, res, next) => {
   try {
     const { role, userId } = req.user || {};
@@ -20,8 +13,8 @@ export const requireOperator = async (req, res, next) => {
 
     if (role === "operator") {
       const [rows] = await pool.execute(
-        `SELECT id, owner_user_id, company_name, contact_email, contact_phone,
-                is_active, created_at, updated_at
+        `SELECT id, owner_user_id, name, email, phone, address,
+                created_at, updated_at
          FROM bus_operators WHERE owner_user_id = ?`,
         [userId],
       );
@@ -30,12 +23,6 @@ export const requireOperator = async (req, res, next) => {
           success: false,
           message:
             "Operator account is not linked to a bus_operator. Contact admin.",
-        });
-      }
-      if (rows[0].is_active === 0 || rows[0].is_active === false) {
-        return res.status(403).json({
-          success: false,
-          message: "Operator account is suspended.",
         });
       }
       req.user.bus_operator_id = rows[0].id;
@@ -48,13 +35,6 @@ export const requireOperator = async (req, res, next) => {
   }
 };
 
-/**
- * requireOperatorOwnership(resourceType)
- * - Loads the resource and verifies the calling operator is the owner.
- * - resourceType: 'trip' | 'bus' | 'schedule' | 'route'
- * - On success, attaches the loaded row to req.resource and calls next().
- * - Skips ownership check for admins (always allowed).
- */
 export const requireOperatorOwnership = (resourceType) => {
   return async (req, res, next) => {
     try {
@@ -103,7 +83,7 @@ export const requireOperatorOwnership = (resourceType) => {
         );
         resource = rows[0] || null;
       } else if (resourceType === "route") {
-        // Routes are not owned by an operator in this model; deny.
+        // Routes are admin-only; no operator ownership concept in this model.
         return res.status(403).json({
           success: false,
           message: "Routes are managed by admins only.",

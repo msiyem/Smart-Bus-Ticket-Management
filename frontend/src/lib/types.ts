@@ -65,6 +65,18 @@ export interface Schedule {
   arrival_time: string;
   fare: number;
   status: ScheduleStatus;
+  repeat_days: number;
+  // Joined bus fields
+  bus_number?: string;
+  bus_type?: BusType;
+  capacity?: number;
+  operator_name?: string | null;
+  operator_id?: number | null;
+  // Joined route fields
+  source_city?: string;
+  destination_city?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type TripStatus = "SCHEDULED" | "CANCELLED" | "COMPLETED";
@@ -72,20 +84,16 @@ export type TripStatus = "SCHEDULED" | "CANCELLED" | "COMPLETED";
 export interface Operator {
   id: number;
   owner_user_id: number;
-  company_name: string;
-  contact_email: string;
-  contact_phone: string | null;
-  is_active: boolean;
+  name: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
   created_at?: string;
   updated_at?: string;
 }
 
-/**
- * Trip = materialized instance of a schedule on a specific date.
- * Returned by both user search and admin/operator management.
- */
 export interface Trip {
   trip_id: number;
   schedule_id: number;
@@ -129,7 +137,6 @@ export interface Booking {
   total_amount: number;
   booking_time: string;
   user_email?: string | null;
-  // Joined trip context (returned by /api/bookings/:id)
   trip_date?: string;
   trip_status?: TripStatus;
   cancelled_reason?: string | null;

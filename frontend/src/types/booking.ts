@@ -1,7 +1,3 @@
-/**
- * Trip-aware search result returned by GET /api/schedules/search.
- * Replaces the old ScheduleSearchResult that exposed schedule_id only.
- */
 export type TripSearchResult = {
   trip_id: number;
   schedule_id: number;
@@ -23,14 +19,9 @@ export type TripSearchResult = {
   route_id: number;
   bus_id: number;
   operator_id?: number | null;
-  // Live availability computed by the backend.
   available_seats: number | null;
 };
 
-/**
- * @deprecated Use TripSearchResult. Retained for legacy components still
- * consuming the old schedule-only payload.
- */
 export type ScheduleSearchResult = TripSearchResult;
 
 export type ScheduleTemplate = {

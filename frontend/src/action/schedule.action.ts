@@ -22,10 +22,6 @@ export type SearchTripsParams = {
   date: string; // YYYY-MM-DD
 };
 
-/**
- * GET /api/schedules/search?source=...&destination=...&date=YYYY-MM-DD
- * Returns materialized trips for the date (lazy-generated when missing).
- */
 export const searchTripsAction = async (
   params: SearchTripsParams,
 ): Promise<TripSearchResponse> => {
@@ -41,13 +37,7 @@ export const searchTripsAction = async (
   }
 };
 
-/**
- * @deprecated Prefer searchTripsAction which returns trip_id-keyed results.
- * Kept as a thin alias to avoid breaking any legacy import sites.
- */
 export const searchSchedules = searchTripsAction;
-
-// --- Admin schedule template lifecycle -----------------------------------
 
 export const listSchedules = async (): Promise<ListResponse> => {
   try {

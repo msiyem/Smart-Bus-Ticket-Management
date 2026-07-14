@@ -20,10 +20,9 @@ import { requireOperator } from "../middleware/operator.middleware.js";
 
 const router = express.Router();
 
-// Operator self (must run before /:id to avoid :id capturing "me")
+// /me must come before /:id so :id doesn't capture "me".
 router.get("/me", Authenticate, requireOperator, getMyOperator);
 
-// Admin
 router.post(
   "/",
   Authenticate,

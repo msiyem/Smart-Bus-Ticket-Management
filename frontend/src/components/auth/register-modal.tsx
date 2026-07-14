@@ -30,6 +30,8 @@ import { toast } from "sonner";
 import Image from "next/image";
 import googleLogo from "../../../public/google-logo.png";
 import { registerUser } from "@/action/auth.action";
+import { useGoogleLogin } from "@/lib/auth/useGoogleLogin";
+import { useRouter } from "next/navigation";
 
 export default function RegisterModal({
   open,
@@ -52,7 +54,10 @@ export default function RegisterModal({
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const router = useRouter();
+  const google = useGoogleLogin();
+  const googleBusy =
+    google.status === "submitting" || google.status === "loading";
 
   const onsubmit = async (data: z.infer<typeof registerSchema>) => {
     const registerPromise = registerUser(data as Record<string, unknown>);
@@ -65,6 +70,31 @@ export default function RegisterModal({
     });
 
     await registerPromise;
+  };
+
+  const handleGoogle = async () => {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+      toast.error(
+        "Google login is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local.",
+      );
+      return;
+    }
+
+    const promise = google.loginWithGoogle();
+
+    toast.promise(promise, {
+      loading: "Connecting to Google...",
+      success: "Signed in with Google!",
+      error: (err) => err?.message || "Google login failed",
+      richColors: true,
+    });
+
+    const result = await promise;
+
+    if (result.success) {
+      onOpenChange?.(false);
+      router.refresh();
+    }
   };
 
   return (
@@ -86,23 +116,38 @@ export default function RegisterModal({
               type="button"
               variant="outline"
               className="w-full flex items-center justify-center gap-3"
-              onClick={() => {
-                setGoogleSubmitting(true);
-                setTimeout(() => setGoogleSubmitting(false), 2000);
-              }}
+              onClick={handleGoogle}
+              disabled={googleBusy || google.status === "error"}
             >
-              {googleSubmitting ? (
+              {googleBusy ? (
                 <>
                   <LoaderCircle className="animate-spin w-4 h-4" />
+                  <Image
+                    src={googleLogo}
+                    alt="Google"
+                    width={18}
+                    height={18}
+                  />
                   Continuing...
                 </>
               ) : (
                 <>
-                  <Image src={googleLogo} alt="Google" width={18} height={18} />
+                  <Image
+                    src={googleLogo}
+                    alt="Google"
+                    width={18}
+                    height={18}
+                  />
                   Continue with Google
                 </>
               )}
             </Button>
+
+            {google.status === "error" && google.error && (
+              <p className="text-xs text-destructive text-center">
+                {google.error}
+              </p>
+            )}
 
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <div className="flex-1 h-px bg-border" />

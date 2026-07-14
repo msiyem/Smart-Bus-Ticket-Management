@@ -84,14 +84,10 @@ export function ScheduleCard({
 
         <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300">
           {(() => {
-            // Backend returns live count for every row.
             const live =
               typeof schedule.available_seats === "number"
                 ? schedule.available_seats
                 : null;
-            // While the user has clicked a card, the store also holds the
-            // exact seat list; show that count (it equals live anyway but
-            // reflects any in-flight refetch).
             if (isActive && typeof availableSeatsCount === "number") {
               return `Available seats: ${availableSeatsCount}`;
             }

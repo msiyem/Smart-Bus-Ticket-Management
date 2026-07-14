@@ -18,14 +18,9 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.5.1",
     "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3",
-    "ms": "^2.1.3",
     "mysql2": "^3.22.3",
-    "node-cron": "^3.0.3",
-    "uuid": "^14.0.0",
-    "validator": "^13.15.35",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -33,13 +33,6 @@ export function useBookingAction(params: UseBookingActionParams) {
     setStatus,
   } = useBookingStore();
 
-  /**
-   * `react-hook-form` is used for the booking step. The form is not rendered
-   * (the seat sheet drives seat selection imperatively), so we use it in
-   * `mode: "onSubmit"` and call `handleSubmit` programmatically from
-   * `handleBook`. Validation runs through the same Zod schema the backend
-   * uses, guaranteeing client/server parity.
-   */
   const {
     handleSubmit,
     setError,
@@ -80,12 +73,6 @@ export function useBookingAction(params: UseBookingActionParams) {
       booking: true,
     }));
 
-    /**
-     * Wrap `handleSubmit` so we can call it imperatively without a `<form>`.
-     * If validation fails, surface the first field error via the global
-     * status message (the visible fields in the seat sheet mirror the
-     * underlying data, so per-field toasts would be noisy).
-     */
     const submit = handleSubmit(
       async () => {
         const totalAmount =
@@ -131,8 +118,6 @@ export function useBookingAction(params: UseBookingActionParams) {
         } else {
           const message = result.message || "Booking failed.";
 
-          // Map server-side field errors back to the form so react-hook-form
-          // keeps a single source of truth.
           const fieldErrors = result.fieldErrors;
           if (fieldErrors) {
             for (const [key, value] of Object.entries(fieldErrors)) {
@@ -199,5 +184,4 @@ export function useBookingAction(params: UseBookingActionParams) {
   };
 }
 
-// Re-export so existing imports of `createBooking` keep working.
 export { createBooking };

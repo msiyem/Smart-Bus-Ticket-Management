@@ -24,18 +24,44 @@ import {
 import { ChevronDown, Menu, Settings, User, UserRound } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthModalStore } from "@/store/auth-modal-store";
-import { logout } from "@/action/auth.action";
+import { useUserStore } from "@/store/userStore";
+import { clientLogout } from "@/lib/auth/client";
 import { SidebarTrigger } from "../ui/sidebar";
+import {
+  parseUserInfoCookieValue,
+  type UserInfo,
+} from "@/lib/auth/userInfo";
 
-type AuthUser = {
-  userId: string;
-  role: "user" | "admin" | "operator";
-  email: string;
-  name?: string;
-  phone?: string;
-  username?: string;
+type AuthUser = UserInfo & {
   gender?: "male" | "female" | "other";
 };
+
+/**
+ * Read the non-HttpOnly `userInfo` companion cookie from the browser.
+ *
+ * Why this exists:
+ *   The HttpOnly `accessToken` cookie is the source of truth and is
+ *   read by the server in `getUser()`. But after a client-side login
+ *   the navbar prop might briefly be null (when the SSR render hasn't
+ *   picked up the new cookies yet, or when the navbar re-mounts on a
+ *   soft navigation). The non-HttpOnly `userInfo` companion cookie is
+ *   set during /api/auth/login and stays in sync with the access token
+ *   — so it lets the navbar render user details instantly on the
+ *   client side without waiting for a server round-trip.
+ *
+ *   This is a fallback for fast UI hydration only — the server-side
+ *   `getUser()` remains authoritative for authorization.
+ */
+function readUserInfoFromBrowser(): AuthUser | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith("userInfo="));
+  if (!match) return null;
+  const raw = decodeURIComponent(match.slice("userInfo=".length));
+  const info = parseUserInfoCookieValue(raw);
+  return info as AuthUser | null;
+}
 
 export default function NavbarClient({
   user,
@@ -46,9 +72,34 @@ export default function NavbarClient({
 }) {
   const router = useRouter();
   const openLogin = useAuthModalStore((state) => state.openLogin);
+  const clearUser = useUserStore((state) => state.clearUser);
+  const storeUser = useUserStore((state) => state.user);
 
- 
-  const isLoggedIn = !!user;
+  // Fallback: if the SSR prop is null but the browser still has the
+  // userInfo companion cookie, hydrate from there. This runs once on
+  // mount and disappears once the SSR prop catches up.
+  const [cookieUser, setCookieUser] = React.useState<AuthUser | null>(null);
+  React.useEffect(() => {
+    if (user) return;
+    const fallback = readUserInfoFromBrowser();
+    if (fallback) setCookieUser(fallback);
+  }, [user]);
+
+  const zustandUser: AuthUser | null = storeUser
+    ? {
+        userId: String(storeUser.id ?? ""),
+        role: storeUser.role,
+        email: storeUser.email,
+        name: storeUser.name ?? undefined,
+        username: storeUser.username ?? undefined,
+      }
+    : null;
+
+  const effectiveUser: AuthUser | null =
+    user ?? zustandUser ?? cookieUser;
+
+
+  const isLoggedIn = !!effectiveUser;
 
   // const getUserInitials = () => {
   //   if (!user?.name) return "U";
@@ -117,13 +168,13 @@ export default function NavbarClient({
                   {getUserInitials()}
                 </span>
               </div> */}
-              {user?.name ? (
+              {effectiveUser?.name ? (
                 <div
-                  title={user.name}
+                  title={effectiveUser.name}
                   className="flex items-center gap-2 cursor-pointer border border-ring h-10 px-2 rounded-md max-w-33.5"
                 >
                   <div className="w-6 h-6 border border-gray-300 rounded-sm relative bg-gray-300 flex items-center justify-center overflow-hidden shrink-0">
-                    {user?.gender === "male" ? (
+                    {effectiveUser?.gender === "male" ? (
                       <Image
                         src={maleAvatar}
                         alt="Male Avatar"
@@ -131,7 +182,7 @@ export default function NavbarClient({
                         height={24}
                         className="object-cover"
                       />
-                    ) : user?.gender === "female" ? (
+                    ) : effectiveUser?.gender === "female" ? (
                       <Image
                         src={femaleAvatar}
                         alt="Female Avatar"
@@ -144,7 +195,7 @@ export default function NavbarClient({
                     )}
                   </div>
 
-                  <div className="truncate text-sm font-bold">{user.name}</div>
+                  <div className="truncate text-sm font-bold">{effectiveUser.name}</div>
 
                   <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
                 </div>
@@ -152,7 +203,7 @@ export default function NavbarClient({
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>{user?.name || "User"}</DropdownMenuLabel>
+              <DropdownMenuLabel>{effectiveUser?.name || "User"}</DropdownMenuLabel>
 
               <DropdownMenuSeparator />
 
@@ -173,7 +224,13 @@ export default function NavbarClient({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={async () => await logout()}
+                onClick={async () => {
+                  await clientLogout();
+                  clearUser();
+                  // Hard navigation back to the home page so the layout
+                  // re-evaluates the (now empty) auth state cleanly.
+                  window.location.href = "/";
+                }}
                 className="text-destructive"
               >
                 Logout

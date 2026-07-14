@@ -1,5 +1,7 @@
 import pool from "../config/db.js";
+import { computeTripDepartureArrival } from "../utils/trip-time.js";
 
+// Business rule: cap seats per single booking.
 const MAX_SEATS_PER_BOOKING = 4;
 
 export const createBookingService = async ({
@@ -136,7 +138,10 @@ export const getBookingDetailsService = async ({ bookingId, userId, role }) => {
     );
 
     return {
-      booking: bookingRows[0],
+      booking: {
+        ...bookingRows[0],
+        ...computeTripDepartureArrival(bookingRows[0]),
+      },
       seats: seatRows,
     };
   } finally {
@@ -188,6 +193,10 @@ export const getMyBookingsService = async ({ userId }) => {
 
     for (const row of rows) {
       if (!bookingMap.has(row.id)) {
+        const { departure_time, arrival_time } = computeTripDepartureArrival(
+          row,
+        );
+
         bookingMap.set(row.id, {
           booking: {
             id: row.id,
@@ -202,8 +211,8 @@ export const getMyBookingsService = async ({ userId }) => {
             actual_departure_time: row.actual_departure_time,
             actual_arrival_time: row.actual_arrival_time,
             cancelled_reason: row.cancelled_reason,
-            departure_time: row.departure_time,
-            arrival_time: row.arrival_time,
+            departure_time,
+            arrival_time,
             schedule_status: row.schedule_status,
             source_city: row.source_city,
             destination_city: row.destination_city,
@@ -262,7 +271,6 @@ export const getBusesWithBookingsByDateService = async ({ date }) => {
   const connection = await pool.getConnection();
 
   try {
-    // Accept a date string (YYYY-MM-DD) and find trips whose trip_date matches.
     const [rows] = await connection.execute(
       `SELECT
         t.id AS trip_id,
@@ -307,6 +315,10 @@ export const getBusesWithBookingsByDateService = async ({ date }) => {
 
     for (const row of rows) {
       if (!tripMap.has(row.trip_id)) {
+        const { departure_time, arrival_time } = computeTripDepartureArrival(
+          row,
+        );
+
         tripMap.set(row.trip_id, {
           trip: {
             id: row.trip_id,
@@ -317,8 +329,8 @@ export const getBusesWithBookingsByDateService = async ({ date }) => {
             actual_arrival_time: row.actual_arrival_time,
             cancelled_reason: row.cancelled_reason,
             schedule_id: row.schedule_id,
-            departure_time: row.departure_time,
-            arrival_time: row.arrival_time,
+            departure_time,
+            arrival_time,
             schedule_status: row.schedule_status,
             source_city: row.source_city,
             destination_city: row.destination_city,

@@ -17,7 +17,7 @@ import {
 
 const router = express.Router();
 
-// Admin + Operator (scoped to their buses via requireOperator + ownership)
+// Admin + Operator (operator scoped via requireOperator + ownership).
 router.get(
   "/",
   Authenticate,

@@ -55,7 +55,6 @@ export const createScheduleSchema = z
 
 export type CreateScheduleData = z.infer<typeof createScheduleSchema>;
 
-// PATCH-style: every field optional, but at least one must be present.
 export const updateScheduleSchema = z
   .object({
     route_id: z.coerce.number().int().positive().optional(),
@@ -101,15 +100,12 @@ export const updateScheduleSchema = z
 
 export type UpdateScheduleData = z.infer<typeof updateScheduleSchema>;
 
-// Toggle a single weekday off (or on). The form posts a date so we can
-// re-compute the bit server-side; the server then flips the matching bit.
 export const offDaySchema = z.object({
   schedule_id: z.coerce.number().int().positive(),
   date: z
     .string()
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be in YYYY-MM-DD format"),
-  // "off" = remove this weekday from the bitmask. "on" = add it back.
   mode: z.enum(["off", "on"]).default("off"),
 });
 

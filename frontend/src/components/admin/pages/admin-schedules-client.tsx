@@ -1,204 +1,200 @@
 "use client";
 
 import React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
-import { createScheduleFormAction } from "@/action/schedule.admin.action";
+import { deleteSchedule, updateSchedule } from "@/action/schedule.action";
 import {
   AdminPageHeader,
   AdminPanel,
 } from "@/components/admin/admin-page-primitives";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { Bus, Route } from "@/lib/types";
-import { DateTimePicker } from "@/components/shared/date-time-picker";
-import {
-  createScheduleSchema,
-  CreateScheduleData,
-} from "@/lib/validations/schedule";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { Schedule, ScheduleStatus } from "@/lib/types";
+
+// Weekday bit positions matching the backend (Mon=0, Sun=6).
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_BITS = [1, 2, 4, 8, 16, 32, 64];
+
+function masksToDays(mask: number): string[] {
+  return WEEKDAY_LABELS.filter((_, idx) => (mask & WEEKDAY_BITS[idx]) !== 0);
+}
 
 export default function AdminSchedulesClient({
-  initialRoutes,
-  initialBuses,
+  initialSchedules,
 }: {
-  initialRoutes: Route[];
-  initialBuses: Bus[];
+  initialSchedules: Schedule[];
 }) {
-  const [routes] = React.useState<Route[]>(initialRoutes);
-  const [buses] = React.useState<Bus[]>(initialBuses);
-  const [submitting, setSubmitting] = React.useState(false);
+  const [schedules, setSchedules] =
+    React.useState<Schedule[]>(initialSchedules);
+  const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
-  const {
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    register,
-    formState: { errors },
-  } = useForm<CreateScheduleData>({
-    resolver: zodResolver(createScheduleSchema) as never,
-    defaultValues: {
-      route_id: 0,
-      bus_id: 0,
-      departure_time: "",
-      arrival_time: "",
-      fare: 0,
-    },
-  });
-
-  const routeId = watch("route_id");
-  const busId = watch("bus_id");
-  const departureTime = watch("departure_time");
-  const arrivalTime = watch("arrival_time");
-
-  const onSubmit = async (values: CreateScheduleData) => {
-    setSubmitting(true);
-    const formData = new FormData();
-    formData.append("route_id", String(values.route_id));
-    formData.append("bus_id", String(values.bus_id));
-    formData.append("departure_time", values.departure_time);
-    formData.append("arrival_time", values.arrival_time);
-    formData.append("fare", String(values.fare));
-
-    const result = await createScheduleFormAction(undefined, formData);
-    if (result.success) {
-      toast.success("Schedule created successfully");
-      reset({
-        route_id: 0,
-        bus_id: 0,
-        departure_time: "",
-        arrival_time: "",
-        fare: 0,
-      });
-    } else {
-      toast.error(result.message || "Failed to create schedule");
+  const handleDelete = async (scheduleId: number) => {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Delete this schedule? This cannot be undone.")
+    ) {
+      return;
     }
-    setSubmitting(false);
+    setDeletingId(scheduleId);
+
+    const result = await deleteSchedule(scheduleId);
+
+    if (result.success) {
+      toast.success("Schedule deleted");
+      setSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
+    } else {
+      toast.error(result.message || "Failed to delete schedule");
+    }
+    setDeletingId(null);
+  };
+
+  const handleStatusToggle = async (schedule: Schedule) => {
+    // COMPLETED is a terminal state — don't silently downgrade it to
+    // SCHEDULED via the Suspend/Resume action.
+    if (schedule.status === "COMPLETED") {
+      toast.error("Completed schedules cannot be toggled.");
+      return;
+    }
+    const nextStatus: ScheduleStatus =
+      schedule.status === "SCHEDULED" ? "CANCELLED" : "SCHEDULED";
+    const result = await updateSchedule(schedule.id, { status: nextStatus });
+    if (result.success) {
+      toast.success(`Schedule ${nextStatus.toLowerCase()}`);
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.id === schedule.id ? { ...s, status: nextStatus } : s,
+        ),
+      );
+    } else {
+      toast.error(result.message || "Failed to update schedule");
+    }
   };
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="Schedule Management"
-        description="Attach buses to routes with departure and arrival planning."
+        description="Attach buses to routes, plan departures, and control which weekdays each schedule repeats on."
+        action={{ label: "Create schedule", href: "/schedules/new" }}
       />
 
       <AdminPanel
-        title="Create Schedule"
-        description="Choose route and bus from the current inventory."
+        title="Existing Schedules"
+        description="All schedules currently registered. Toggle status to suspend without deleting."
       >
-        <form
-          className="grid gap-3 md:grid-cols-2"
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-        >
-          <div className="md:col-span-1">
-            <Select
-              value={routeId ? String(routeId) : ""}
-              onValueChange={(v) =>
-                setValue("route_id", Number(v), { shouldValidate: true })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select route" />
-              </SelectTrigger>
-              <SelectContent>
-                {routes.map((route) => (
-                  <SelectItem key={route.id} value={String(route.id)}>
-                    {route.source_city} to {route.destination_city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.route_id && (
-              <p className="mt-1 text-xs text-red-500">
-                {errors.route_id.message}
-              </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Route</TableHead>
+              <TableHead>Bus</TableHead>
+              <TableHead>Departure</TableHead>
+              <TableHead>Arrival</TableHead>
+              <TableHead>Days</TableHead>
+              <TableHead>Fare</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[140px] text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {schedules.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={8}
+                  className="text-center text-sm text-muted-foreground"
+                >
+                  No schedules yet. Create one to populate this list.
+                </TableCell>
+              </TableRow>
+            ) : (
+              schedules.map((schedule) => (
+                <TableRow key={schedule.id}>
+                  <TableCell className="font-medium">
+                    {(schedule.source_city ?? "?") +
+                      " → " +
+                      (schedule.destination_city ?? "?")}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col text-xs">
+                      <span className="font-medium">
+                        {schedule.bus_number ?? "—"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {schedule.bus_type ?? ""}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {schedule.departure_time
+                      ? new Date(schedule.departure_time).toLocaleString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {schedule.arrival_time
+                      ? new Date(schedule.arrival_time).toLocaleString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {masksToDays(schedule.repeat_days).join(", ") || "—"}
+                  </TableCell>
+                  <TableCell className="text-xs">৳{schedule.fare}</TableCell>
+                  <TableCell className="text-xs">
+                    <span
+                      className={
+                        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                        (schedule.status === "SCHEDULED"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : schedule.status === "CANCELLED"
+                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                            : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300")
+                      }
+                    >
+                      {schedule.status}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleStatusToggle(schedule)}
+                        disabled={schedule.status === "COMPLETED"}
+                        title={
+                          schedule.status === "COMPLETED"
+                            ? "Completed schedules cannot be toggled"
+                            : undefined
+                        }
+                        className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-emerald-950/40 disabled:opacity-50"
+                      >
+                        {schedule.status === "SCHEDULED"
+                          ? "Suspend"
+                          : "Resume"}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(schedule.id)}
+                        disabled={deletingId === schedule.id}
+                        aria-label="Delete schedule"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-          </div>
-
-          <div className="md:col-span-1">
-            <Select
-              value={busId ? String(busId) : ""}
-              onValueChange={(v) =>
-                setValue("bus_id", Number(v), { shouldValidate: true })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select bus" />
-              </SelectTrigger>
-              <SelectContent>
-                {buses.map((bus) => (
-                  <SelectItem key={bus.id} value={String(bus.id)}>
-                    {bus.bus_number} • {bus.bus_type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.bus_id && (
-              <p className="mt-1 text-xs text-red-500">{errors.bus_id.message}</p>
-            )}
-          </div>
-
-          <div className="md:col-span-1">
-            <DateTimePicker
-              value={departureTime}
-              onChange={(v) =>
-                setValue("departure_time", v, { shouldValidate: true })
-              }
-              placeholder="Departure time"
-            />
-            {errors.departure_time && (
-              <p className="mt-1 text-xs text-red-500">
-                {errors.departure_time.message}
-              </p>
-            )}
-          </div>
-
-          <div className="md:col-span-1">
-            <DateTimePicker
-              value={arrivalTime}
-              onChange={(v) =>
-                setValue("arrival_time", v, { shouldValidate: true })
-              }
-              placeholder="Arrival time"
-            />
-            {errors.arrival_time && (
-              <p className="mt-1 text-xs text-red-500">
-                {errors.arrival_time.message}
-              </p>
-            )}
-          </div>
-
-          <div className="md:col-span-2">
-            <Input
-              type="number"
-              min={1}
-              {...register("fare")}
-              placeholder="Fare"
-            />
-            {errors.fare && (
-              <p className="mt-1 text-xs text-red-500">{errors.fare.message}</p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="md:col-span-2 bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            {submitting ? "Creating schedule..." : "Create schedule"}
-          </Button>
-        </form>
+          </TableBody>
+        </Table>
       </AdminPanel>
     </div>
   );

@@ -57,10 +57,6 @@ export const getAllBuses = async (): Promise<GetBusesResponse> => {
   }
 };
 
-/**
- * Server action that validates a FormData payload against the Zod create-bus
- * schema before forwarding to the API.
- */
 export const createBusFormAction = async (
   _prev: FormActionResult<CreateBusResponse> | undefined,
   formData: FormData,

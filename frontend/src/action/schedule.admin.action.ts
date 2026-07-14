@@ -31,8 +31,6 @@ type ActionResult = { success: boolean; message?: string };
 
 type CreateScheduleResponse = ActionResult & { scheduleId?: number };
 
-// --- Create --------------------------------------------------------------
-
 export const createSchedule = async (payload: {
   route_id: number;
   bus_id: number;
@@ -85,8 +83,6 @@ export const createScheduleFormAction = async (
   }
   return { success: true, data: result };
 };
-
-// --- Update / Delete -----------------------------------------------------
 
 export const updateScheduleFormAction = async (
   scheduleId: number,
@@ -148,8 +144,6 @@ export const deleteScheduleFormAction = async (
   }
 };
 
-// --- Off for a single day ------------------------------------------------
-
 // Bit positions matching the backend (Mon=0, Sun=6).
 const WEEKDAY_BITS = [1, 2, 4, 8, 16, 32, 64];
 
@@ -161,8 +155,6 @@ const weekdayBitForDate = (yyyyMmDd: string): number => {
   return WEEKDAY_BITS[position];
 };
 
-// GET schedules/:id (admin) - server action wrapper so we can read the
-// current repeat_days before flipping a bit.
 export const getSchedule = async (
   id: number,
 ): Promise<{ success: boolean; repeat_days?: number; message?: string }> => {

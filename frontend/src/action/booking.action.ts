@@ -146,7 +146,6 @@ export const getBookingById = async (
   bookingId: number,
 ): Promise<BookingDetailsResponse> => {
   try {
-    // Validate bookingId early to provide clearer client-side errors
     if (!Number.isFinite(bookingId) || bookingId <= 0) {
       return {
         success: false,
@@ -196,11 +195,6 @@ export const getBookingsByDay = async (
   }
 };
 
-/**
- * Server action that validates a FormData payload against the Zod
- * create-booking schema before forwarding to the API. The `seatNumbers`
- * field may be repeated multiple times in the form.
- */
 export const createBookingFormAction = async (
   _prev: FormActionResult<CreateBookingResponse> | undefined,
   formData: FormData,
@@ -232,10 +226,6 @@ export const createBookingFormAction = async (
   return { success: true, data: result };
 };
 
-/**
- * Server action that validates a FormData payload against the Zod
- * cancel-booking schema before forwarding to the API.
- */
 export const cancelBookingFormAction = async (
   _prev: FormActionResult | undefined,
   formData: FormData,

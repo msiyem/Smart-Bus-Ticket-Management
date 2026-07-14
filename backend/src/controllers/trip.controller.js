@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { computeTripDepartureArrival } from "../utils/trip-time.js";
 
 const JOIN_BASE = `
   FROM trips t
@@ -40,19 +41,25 @@ const SELECT_BASE = `
     ) AS booked_seats
 `;
 
-const shapeRow = (row) => ({
-  ...row,
-  available_seats: Math.max(
-    0,
-    Number(row.capacity) - Number(row.booked_seats || 0),
-  ),
-});
+const shapeRow = (row) => {
+  // The schedule's departure_time/arrival_time are DATETIMEs tied to the
+  // schedule's original creation date. Each trip runs on its own
+  // trip_date, so reconstruct the departure/arrival timestamps by
+  // combining trip_date with the TIME portion of the schedule times so
+  // the UI shows the correct date for each trip.
+  const { departure_time, arrival_time } = computeTripDepartureArrival(row);
 
-/**
- * GET /api/trips
- * Admin: list any trip (with filters).
- * Operator: list only trips on buses they operate.
- */
+  return {
+    ...row,
+    departure_time,
+    arrival_time,
+    available_seats: Math.max(
+      0,
+      Number(row.capacity) - Number(row.booked_seats || 0),
+    ),
+  };
+};
+
 export const listTrips = async (req, res) => {
   try {
     const { role, bus_operator_id } = req.user || {};
@@ -115,9 +122,6 @@ export const listTrips = async (req, res) => {
   }
 };
 
-/**
- * GET /api/trips/:id
- */
 export const getTripById = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -144,11 +148,6 @@ export const getTripById = async (req, res) => {
   }
 };
 
-/**
- * PATCH /api/trips/:id
- * Admin or operator (scoped). Mutable: fare, status, actual_* times,
- * cancelled_reason.
- */
 export const updateTrip = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -198,10 +197,6 @@ export const updateTrip = async (req, res) => {
   }
 };
 
-/**
- * POST /api/trips/:id/cancel
- * Convenience: same as PATCH {status:'CANCELLED', cancelled_reason}.
- */
 export const cancelTrip = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -230,10 +225,6 @@ export const cancelTrip = async (req, res) => {
   }
 };
 
-/**
- * DELETE /api/trips/:id
- * Refuses with 409 if any booking_seats reference this trip.
- */
 export const deleteTrip = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -255,7 +246,6 @@ export const deleteTrip = async (req, res) => {
       });
     }
 
-    // booking_seats may have rows even if bookings were deleted; clean up.
     await pool.execute(`DELETE FROM booking_seats WHERE trip_id = ?`, [id]);
 
     const [result] = await pool.execute(`DELETE FROM trips WHERE id = ?`, [id]);

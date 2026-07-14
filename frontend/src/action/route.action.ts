@@ -55,14 +55,10 @@ export const getAllRoutes = async (): Promise<RoutesResult> => {
     });
   } catch (error) {
     console.error("Error fetching routes:", error);
-    return { success: false, message: "Failed to fetch routes" };
+    return { success: false, message: "Failed to fetch routes", routes: [] };
   }
 };
 
-/**
- * Server action that validates a FormData payload against the Zod create-route
- * schema before forwarding to the API.
- */
 export const createRouteFormAction = async (
   _prev: FormActionResult | undefined,
   formData: FormData,

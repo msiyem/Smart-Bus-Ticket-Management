@@ -80,7 +80,6 @@ export const getMyBookings = async (req, res) => {
 
 export const getBookingsByDay = async (req, res) => {
   try {
-    // date expected as YYYY-MM-DD in query, default to today
     const { date } = req.query;
 
     const day = date || new Date().toISOString().slice(0, 10);

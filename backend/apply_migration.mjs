@@ -1,6 +1,4 @@
-// Apply the 2026_06_19_trips_refactor.sql migration using the same
-// connection pool the running backend uses. Idempotent — every step
-// checks information_schema first.
+
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";

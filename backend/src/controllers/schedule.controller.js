@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 import { requireFields } from "../validations/requireFields.validate.js";
 import { weekdayBitForDate } from "../utils/weekday.js";
+import { computeTripDepartureArrival } from "../utils/trip-time.js";
 import {
   ensureTripsForDateRange,
   ensureTripsForSchedule,
@@ -26,7 +27,7 @@ export const createSchedule = async (req, res) => {
       repeat_days,
     } = req.body;
 
-    // Default to every day when not provided.
+    // 127 = all 7 weekday bits set (every day).
     const repeatBitmask =
       repeat_days === undefined || repeat_days === null || repeat_days === ""
         ? 127
@@ -41,7 +42,6 @@ export const createSchedule = async (req, res) => {
 
     const scheduleId = result.insertId;
 
-    // Backfill upcoming 10 days of trips so this template is bookable now.
     try {
       const today = new Date();
       const end = new Date(today.getTime() + 9 * 24 * 60 * 60 * 1000);
@@ -63,17 +63,24 @@ export const createSchedule = async (req, res) => {
       scheduleId,
     });
   } catch (error) {
-    res.status(500).json({
+    const status = Number(error?.statusCode) >= 400 && Number(error?.statusCode) < 600
+      ? Number(error.statusCode)
+      : 500;
+    const rawMessage = String(error?.message || "").trim();
+    const message =
+      rawMessage ||
+      (error?.code === "ER_NO_REFERENCED_ROW_2"
+        ? "Referenced route or bus does not exist."
+        : error?.code === "ER_DUP_ENTRY"
+          ? "Schedule already exists for this route/bus/time."
+          : "Failed to create schedule.");
+    res.status(status).json({
       success: false,
-      message: error.message,
+      message,
     });
   }
 };
 
-// GET /schedules/search?source=&destination=&date=YYYY-MM-DD
-// Returns the materialized trips that run on the given date, joined back
-// to their schedule template / bus / route. `available_seats` is the live
-// count against `booking_seats.trip_id`.
 export const searchSchedules = async (req, res) => {
   try {
     requireFields(req.query, "source", "destination", "date");
@@ -87,13 +94,9 @@ export const searchSchedules = async (req, res) => {
       });
     }
 
-    // Lazy generator safety: if the cron hasn't materialized trips for
-    // this date yet, do it inline. Cheap (INSERT IGNORE) and idempotent.
     try {
       await ensureTripsForDateRange(date, date);
     } catch (e) {
-      // Don't fail the search if the generator hiccups; just log and
-      // continue with whatever trips already exist.
       console.error("[searchSchedules] lazy generator failed:", e.message);
     }
 
@@ -140,13 +143,27 @@ export const searchSchedules = async (req, res) => {
       [date, dayBit, dayBit, source, destination],
     );
 
-    const data = trips.map((row) => ({
-      ...row,
-      available_seats: Math.max(
-        0,
-        Number(row.capacity) - Number(row.booked_seats || 0),
-      ),
-    }));
+    const data = trips.map((row) => {
+      // The schedule's departure_time/arrival_time are DATETIMEs tied to the
+      // schedule's original creation date. Each trip runs on its own
+      // trip_date, so reconstruct the departure/arrival timestamps by
+      // combining trip_date with the TIME portion of the schedule times.
+      // This guarantees the search result displays the correct date when
+      // schedules repeat across days.
+      const { departure_time, arrival_time } = computeTripDepartureArrival(
+        row,
+      );
+
+      return {
+        ...row,
+        departure_time,
+        arrival_time,
+        available_seats: Math.max(
+          0,
+          Number(row.capacity) - Number(row.booked_seats || 0),
+        ),
+      };
+    });
 
     res.json({
       success: true,
@@ -156,12 +173,11 @@ export const searchSchedules = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Failed to search schedules",
     });
   }
 };
 
-// GET /schedules  (admin) - list all templates
 export const listSchedules = async (_req, res) => {
   try {
     const [rows] = await pool.execute(
@@ -190,11 +206,10 @@ export const listSchedules = async (_req, res) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message || "Failed to list schedules" });
   }
 };
 
-// GET /schedules/:id  (admin)
 export const getScheduleById = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -237,11 +252,10 @@ export const getScheduleById = async (req, res) => {
 
     res.json({ success: true, data: rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message || "Failed to fetch schedule" });
   }
 };
 
-// PUT /schedules/:id  (admin) - edit any subset
 export const updateSchedule = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -291,11 +305,10 @@ export const updateSchedule = async (req, res) => {
 
     res.json({ success: true, scheduleId: id });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message || "Failed to update schedule" });
   }
 };
 
-// DELETE /schedules/:id  (admin)
 export const deleteSchedule = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -305,7 +318,6 @@ export const deleteSchedule = async (req, res) => {
         .json({ success: false, message: "Invalid schedule id" });
     }
 
-    // Refuse to delete a template that has bookings on any of its trips.
     const [bookings] = await pool.execute(
       `SELECT COUNT(*) AS c
        FROM bookings b
@@ -334,6 +346,6 @@ export const deleteSchedule = async (req, res) => {
 
     res.json({ success: true, scheduleId: id });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message || "Failed to delete schedule" });
   }
 };

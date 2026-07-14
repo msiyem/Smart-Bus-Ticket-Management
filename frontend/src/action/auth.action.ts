@@ -1,18 +1,13 @@
 "use server";
 
-import { LoginPayload, LoginResponse, User } from "@/lib/types";
-import { API_URL } from "@/lib/const";
-import { deleteCookie, getCookie, setCookie } from "@/lib/cookies";
+import { requireApiUrl } from "@/lib/const";
+import { deleteCookie } from "@/lib/cookies";
 import { serverRequest } from "@/action/server-request.action";
 import { parseFormData, formatZodErrors } from "@/action/form-data";
 import { loginUserSchema, LoginUserData } from "@/lib/validations/login";
 import { registerSchema, RegisterSchema } from "@/lib/validations/register";
-import {
-  buildUserInfoCookieValue,
-  extractUserInfoFromAccessToken,
-  USER_INFO_COOKIE,
-  USER_INFO_MAX_AGE,
-} from "@/lib/auth/userInfo";
+import { LoginPayload, LoginResponse, User } from "@/lib/types";
+import { USER_INFO_COOKIE } from "@/lib/auth/userInfo";
 
 export type FormActionResult<T = unknown> =
   | { success: true; data?: T }
@@ -33,51 +28,72 @@ function toFieldErrors(error: unknown): Record<string, string> | undefined {
 
 export const login = async (payload: LoginPayload): Promise<LoginResponse> => {
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(`${requireApiUrl()}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
       body: JSON.stringify(payload),
+      cache: "no-store",
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      throw new Error(data.message || "Login failed");
+      return {
+        success: false,
+        message: data?.message || "Login failed",
+      };
     }
 
-    if (data.accessToken) {
-      await setCookie("accessToken", data.accessToken, 60 * 15); // 15 minutes
-    }
-
-    if (data.refreshToken) {
-      await setCookie("refreshToken", data.refreshToken, 60 * 60 * 24 * 7); // 7 days
-    }
-
-    if (data.sessionId) {
-      await setCookie("sessionId", data.sessionId, 60 * 60 * 24 * 7); // 7 days
-    }
-
-    // Companion non-HttpOnly cookie for fast client-side UI hydration.
-    // Belt-and-braces: try backend user first, fall back to claims from the
-    // freshly-issued JWT so this stays correct even if the backend changes
-    // the login payload later.
-    const userForCookie =
-      data.user ?? extractUserInfoFromAccessToken(data.accessToken ?? "");
-    if (userForCookie) {
-      await setCookie(
-        USER_INFO_COOKIE,
-        buildUserInfoCookieValue(userForCookie),
-        USER_INFO_MAX_AGE,
-      );
-    }
-
-    return data;
+    return {
+      success: true,
+      message: data?.message || "Login successful",
+      user: data?.user,
+    };
   } catch (error) {
     console.error("Login error:", error);
     return { success: false, message: "An error occurred while logging in" };
+  }
+};
+
+export const googleLogin = async (idToken: string): Promise<LoginResponse> => {
+  try {
+    if (!idToken) {
+      return { success: false, message: "Missing Google idToken" };
+    }
+
+    const response = await fetch(`${requireApiUrl()}/auth/google`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ idToken }),
+      cache: "no-store",
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data?.message || "Google login failed",
+      };
+    }
+
+    return {
+      success: true,
+      message: data?.message || "Google login successful",
+      user: data?.user,
+    };
+  } catch (error) {
+    console.error("Google login error:", error);
+    return {
+      success: false,
+      message: "An error occurred during Google login",
+    };
   }
 };
 
@@ -88,11 +104,6 @@ export const registerUser = async (payload: Record<string, unknown>) => {
   });
 };
 
-/**
- * Server action that validates a FormData payload against the Zod login
- * schema before forwarding to the API. Designed to be used with
- * react-hook-form's `formAction` prop or a direct form submit.
- */
 export const loginFormAction = async (
   _prev: FormActionResult<LoginResponse> | undefined,
   formData: FormData,
@@ -119,10 +130,6 @@ export const loginFormAction = async (
   return { success: true, data: result };
 };
 
-/**
- * Server action that validates a FormData payload against the Zod register
- * schema before forwarding to the API.
- */
 export const registerFormAction = async (
   _prev: FormActionResult | undefined,
   formData: FormData,
@@ -139,7 +146,6 @@ export const registerFormAction = async (
     };
   }
 
-  // Strip confirmPassword before sending to backend
   const { confirmPassword: _omit, ...payload } = parsed;
   const result = await registerUser(payload as Record<string, unknown>);
   if (
@@ -159,19 +165,23 @@ export const registerFormAction = async (
 
 export const logout = async () => {
   try {
-    const refreshToken = await getCookie("refreshToken");
-    const sessionId = await getCookie("sessionId");
-
-    const data = await serverRequest("auth/logout", {
+    const response = await fetch(`${requireApiUrl()}/auth/logout`, {
       method: "POST",
-      body: JSON.stringify({ refreshToken, sessionId }),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      cache: "no-store",
     });
 
+    const data = await response.json().catch(() => ({}));
+
     await deleteCookie("accessToken");
-    await deleteCookie("refreshToken");
-    await deleteCookie("sessionId");
     await deleteCookie(USER_INFO_COOKIE);
-    return data;
+
+    return data?.success
+      ? { success: true, message: data.message || "Logged out" }
+      : { success: false, message: data?.message || "Logout failed" };
   } catch (error) {
     console.error("Logout error:", error);
     return { success: false, message: "An error occurred while logging out" };
@@ -192,8 +202,8 @@ export const getMe = async () => {
 
 export const updateUser = async (userId: string, payload: User) => {
   try {
-    return await serverRequest(`auth/users/${userId}`, {
-      method: "POST",
+    return await serverRequest(`users/${userId}`, {
+      method: "PUT",
       auth: true,
       body: JSON.stringify(payload),
     });
@@ -214,5 +224,3 @@ export const deleteUser = async (userId: string) => {
     return { success: false, message: "Failed to delete user" };
   }
 };
-
-

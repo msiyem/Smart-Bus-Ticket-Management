@@ -34,6 +34,7 @@ export function useBooking(params: UseBookingParams) {
     ...seatManagerRest,
 
     handleTripSelect: loadAvailableSeatsForTrip,
+    handleScheduleSelect: loadAvailableSeatsForTrip,
     handleSeatToggle: toggleSeat,
     maxSeatsPerBooking: MAX_SEATS_PER_BOOKING,
 

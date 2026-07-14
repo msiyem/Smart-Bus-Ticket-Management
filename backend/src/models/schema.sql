@@ -27,24 +27,6 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE IF NOT EXISTS `refresh_tokens` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` bigint NOT NULL,
-  `token` varchar(255) NOT NULL,
-  `expires_at` datetime NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `session_id` varchar(255) NOT NULL,
-  `max_age` datetime NOT NULL,
-  `is_revoked` tinyint(1) DEFAULT '0',
-  `replace_by_token` varchar(255) DEFAULT NULL,
-
-  PRIMARY KEY (`id`),
-
-  CONSTRAINT `refresh_tokens_ibfk_1`
-    FOREIGN KEY (`user_id`)
-    REFERENCES `users` (`id`)
-    ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS routes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -306,4 +288,4 @@ CREATE TABLE IF NOT EXISTS trips (
 
     UNIQUE KEY uniq_trips_schedule_date (schedule_id, trip_date),
     KEY idx_trips_trip_date (trip_date)
-);
+);  

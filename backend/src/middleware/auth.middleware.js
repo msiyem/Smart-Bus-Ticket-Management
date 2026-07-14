@@ -3,9 +3,10 @@ import jwt from "jsonwebtoken";
 export const Authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  const token = authHeader?.startsWith("Bearer ")
+  const bearerToken = authHeader?.startsWith("Bearer ")
     ? authHeader.split(" ")[1]
     : null;
+  const token = bearerToken || req.cookies?.accessToken;
 
   if (!token) {
     return res.status(401).json({
@@ -15,15 +16,12 @@ export const Authenticate = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
-    );
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
     req.user = decoded;
 
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       success: false,
       message: "Invalid or expired token.",

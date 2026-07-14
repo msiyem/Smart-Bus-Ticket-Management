@@ -39,8 +39,6 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-// Keep legacy form-with-confirm schema for the register form that posts
-// password + confirmPassword together.
 export const registerFormSchema = registerSchema
   .extend({
     confirmPassword: z.string().min(1, "Confirm password is required"),
@@ -50,15 +48,13 @@ export const registerFormSchema = registerSchema
     path: ["confirmPassword"],
   });
 
-// Admin-driven user creation: required role selector (user / admin / operator).
-// Mirrors the frontend createUserAdminSchema used by react-hook-form + zod.
 export const createUserAdminSchema = registerSchema
   .extend({
     role: z.enum(["user", "admin", "operator"], {
       errorMap: () => ({ message: "role must be user, admin, or operator" }),
     }),
     confirmPassword: z.string().min(1, "Confirm password is required"),
-    // Address is required when an admin is creating an account on a user's behalf.
+    // Address is required when admin creates an account on a user's behalf.
     address: z
       .string()
       .trim()

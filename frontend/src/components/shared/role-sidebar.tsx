@@ -11,6 +11,7 @@ import {
   Map,
   Route,
   Users,
+  CalendarCheck,
 } from "lucide-react";
 
 import {
@@ -34,7 +35,6 @@ type SidebarItem = {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** Roles allowed to see this entry. */
   roles: UserRole[];
   exact?: boolean;
 };
@@ -72,6 +72,12 @@ const navItems: SidebarItem[] = [
     roles: ["admin", "operator"],
   },
   {
+    title: "Trips",
+    href: "/trips",
+    icon: CalendarCheck,
+    roles: ["admin"],
+  },
+  {
     title: "Operators",
     href: "/operators",
     icon: Building2,
@@ -106,25 +112,6 @@ export default function RoleSidebar({ role }: { role: UserRole }) {
       className="border-r border-border bg-background transition-colors"
     >
       <SidebarHeader className="border-b border-border h-16  hover:bg-accent/50 transition-colors hover:text-emerald-600 dark:hover:text-emerald-400">
-        {/* <div className="flex items-center relative ">
-          <Image
-            // onClick={() => router.push("/")}
-            src={ticketLight}
-            alt="Ticket Mama Icon"
-            width={120}
-            height={50}
-            className="h-auto w-auto rounded-full cursor-pointer block dark:hidden"
-            priority
-          />
-          <Image
-            src={ticketDark}
-            alt="Ticket Mama Icon"
-            width={120}
-            height={50}
-            className="h-7 w-7 rounded-full hidden dark:block"
-            priority
-          />
-        </div> */}
         <div
           onClick={toggleSidebar}
           className="flex items-center cursor-pointer justify-between px-4 py-1"

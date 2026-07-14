@@ -11,64 +11,59 @@ const phoneSchema = z
   .optional()
   .or(z.literal(""));
 
-/**
- * POST /api/operators body
- */
+const addressSchema = z
+  .string()
+  .trim()
+  .max(255, "Address must not exceed 255 characters")
+  .optional()
+  .or(z.literal(""));
+
 export const createOperatorSchema = z.object({
   owner_user_id: z.coerce
     .number({ message: "owner_user_id is required" })
     .int()
     .positive("owner_user_id must be a positive integer"),
-  company_name: z
+  name: z
     .string()
     .trim()
-    .min(2, "Company name must be at least 2 characters")
-    .max(150, "Company name must not exceed 150 characters"),
-  contact_email: z
+    .min(2, "Name must be at least 2 characters")
+    .max(150, "Name must not exceed 150 characters"),
+  email: z
     .string()
     .trim()
     .toLowerCase()
-    .email("Please enter a valid contact email")
-    .max(255, "Email must not exceed 255 characters"),
-  contact_phone: phoneSchema,
-  is_active: z
-    .union([z.boolean(), z.coerce.number()])
-    .transform((v) => (typeof v === "number" ? v !== 0 : Boolean(v)))
-    .optional(),
+    .email("Please enter a valid email")
+    .max(150, "Email must not exceed 150 characters"),
+  phone: phoneSchema,
+  address: addressSchema,
 });
 
 export type CreateOperatorData = z.infer<typeof createOperatorSchema>;
 
-/**
- * PATCH /api/operators/:id body — at least one field is required.
- */
 export const updateOperatorSchema = z
   .object({
-    company_name: z
+    name: z
       .string()
       .trim()
-      .min(2, "Company name must be at least 2 characters")
-      .max(150, "Company name must not exceed 150 characters")
+      .min(2, "Name must be at least 2 characters")
+      .max(150, "Name must not exceed 150 characters")
       .optional(),
-    contact_email: z
+    email: z
       .string()
       .trim()
       .toLowerCase()
-      .email("Please enter a valid contact email")
-      .max(255, "Email must not exceed 255 characters")
+      .email("Please enter a valid email")
+      .max(150, "Email must not exceed 150 characters")
       .optional(),
-    contact_phone: phoneSchema,
-    is_active: z
-      .union([z.boolean(), z.coerce.number()])
-      .transform((v) => (typeof v === "number" ? v !== 0 : Boolean(v)))
-      .optional(),
+    phone: phoneSchema,
+    address: addressSchema,
   })
   .refine(
     (data) =>
-      data.company_name !== undefined ||
-      data.contact_email !== undefined ||
-      data.contact_phone !== undefined ||
-      data.is_active !== undefined,
+      data.name !== undefined ||
+      data.email !== undefined ||
+      data.phone !== undefined ||
+      data.address !== undefined,
     { message: "At least one field must be provided" },
   );
 

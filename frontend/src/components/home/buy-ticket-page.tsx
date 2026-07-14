@@ -7,7 +7,7 @@ import SearchFormCover from "../../../public/home-cover.png";
 import SearchFormCoverDark from "../../../public/home-cover-dark.png";
 
 import { getMyBookings } from "@/action/booking.action";
-import { refreshSession } from "@/action/session.action";
+import { getUser } from "@/lib/auth/getUser";
 import { BookingToast } from "@/components/buy-ticket/booking-toast";
 import { MyTicketsSection } from "@/components/buy-ticket/my-tickets-section";
 import { SearchForm } from "@/components/buy-ticket/search-form";
@@ -33,12 +33,9 @@ export default function BuyTicketPage({
       return true;
     }
 
-    // Only refresh when we have nothing else to go on.
-    // refreshSession() dedupes internally, so even if multiple paths call
-    // it concurrently only one backend round-trip happens.
-    const refreshed = await refreshSession();
+    const user = await getUser();
 
-    if (refreshed) {
+    if (user) {
       setAuthenticated(true);
       return true;
     }
@@ -87,9 +84,7 @@ export default function BuyTicketPage({
         />
 
         <section className="relative overflow-visible ">
-          {/* Background Image */}
           <div className="relative w-full -mt-2">
-            {/* Light Mode Image */}
             <Image
               src={SearchFormCover}
               alt="Bus ticket cover"
@@ -98,7 +93,6 @@ export default function BuyTicketPage({
               sizes="100vw"
             />
 
-            {/* Dark Mode Image */}
             <Image
               src={SearchFormCoverDark}
               alt="Bus ticket cover dark"
@@ -118,7 +112,6 @@ export default function BuyTicketPage({
 
           </div>
 
-          {/* Search Form Card */}
           <div className="absolute left-1/2 top-full sm:top-[85%] md:top-[65%] lg:top-[60%] z-20 w-full -translate-x-1/2 px-4">
             <div className="mx-auto max-w-6xl rounded-3xl bg-white/30 p-3 shadow backdrop-blur dark:bg-emerald-900/30 lg:p-3.5">
               <SearchForm

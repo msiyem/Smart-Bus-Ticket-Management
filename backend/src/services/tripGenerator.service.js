@@ -4,18 +4,6 @@ import {
   weekdayBitForDate,
 } from "../utils/weekday.js";
 
-/**
- * Ensure that for every active schedule (`status='SCHEDULED'`), a trip row
- * exists for every date in [startDate, endDate] whose weekday bit matches
- * the schedule's `repeat_days` bitmask.
- *
- * Idempotent: relies on `UNIQUE (schedule_id, trip_date)` + `INSERT IGNORE`
- * to make repeated calls safe. Cancelled/completed trips are not regenerated.
- *
- * @param {string} startDate - 'YYYY-MM-DD' inclusive
- * @param {string} endDate - 'YYYY-MM-DD' inclusive
- * @returns {Promise<{created: number, skipped: number, range: string[]}>}
- */
 export const ensureTripsForDateRange = async (startDate, endDate) => {
   const dates = dateRangeInclusive(startDate, endDate);
   if (dates.length === 0) {
@@ -49,8 +37,7 @@ export const ensureTripsForDateRange = async (startDate, endDate) => {
       values.push(schedule.id, tripDate, schedule.fare);
     }
 
-    // INSERT IGNORE: if a trip already exists for (schedule_id, trip_date),
-    // it's silently skipped. affectedRows == number of rows actually inserted.
+    // INSERT IGNORE — affectedRows counts only rows actually inserted
     const [result] = await pool.query(
       `INSERT IGNORE INTO trips (schedule_id, trip_date, fare)
        VALUES ${placeholders.join(", ")}`,
@@ -64,15 +51,6 @@ export const ensureTripsForDateRange = async (startDate, endDate) => {
   return { created, skipped, range: dates };
 };
 
-/**
- * Same as ensureTripsForDateRange but constrains to a single schedule.
- * Used when an admin/operator edits a schedule to backfill or re-create
- * trips for upcoming dates that should match the new template.
- *
- * If a trip already exists it is left untouched (to preserve booking history
- * and any per-trip fare overrides). To re-create a trip, the caller must
- * delete it explicitly first.
- */
 export const ensureTripsForSchedule = async (scheduleId, startDate, endDate) => {
   const dates = dateRangeInclusive(startDate, endDate);
   if (dates.length === 0) return { created: 0, skipped: 0, range: [] };

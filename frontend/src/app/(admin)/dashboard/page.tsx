@@ -17,7 +17,7 @@ export default function AdminIndex() {
         title="Quick Links"
         description="Jump directly into your most-used management screens."
       >
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Link
             href="/routes"
             className="rounded-2xl border border-emerald-200/80 bg-white/90 p-4 text-base font-medium text-foreground transition hover:-translate-y-0.5 hover:shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40"
@@ -35,6 +35,12 @@ export default function AdminIndex() {
             className="rounded-2xl border border-emerald-200/80 bg-white/90 p-4 text-base font-medium text-foreground transition hover:-translate-y-0.5 hover:shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40"
           >
             Manage Schedules
+          </Link>
+          <Link
+            href="/trips"
+            className="rounded-2xl border border-emerald-200/80 bg-white/90 p-4 text-base font-medium text-foreground transition hover:-translate-y-0.5 hover:shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40"
+          >
+            Manage Trips
           </Link>
         </div>
       </AdminPanel>

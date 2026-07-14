@@ -70,7 +70,7 @@ export async function registerUserController(req, res) {
         message: "User with this email already exists",
       });
     }
-    const passwordHash = await bcrypt.hash(password, 12); // In production, hash the password before storing
+    const passwordHash = await bcrypt.hash(password, 12);
     const [result] = await pool.query(
       "INSERT INTO users (name, username, email, password_hash, address) VALUES (?, ?, ?, ?, ?)",
       [name, username, email, passwordHash, address],
@@ -88,11 +88,6 @@ export async function registerUserController(req, res) {
   }
 }
 
-/**
- * POST /api/users
- * Admin-only: create a user with a specified role (user / admin / operator).
- * Validated by createUserAdminSchema via the validate middleware.
- */
 export async function adminCreateUserController(req, res) {
   try {
     const { name, username, email, password, address, role } = req.body;

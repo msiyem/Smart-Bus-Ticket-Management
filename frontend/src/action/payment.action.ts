@@ -39,6 +39,7 @@ export const createPayment = async (payload: {
   try {
     const response = await serverRequest("payments", {
       method: "POST",
+      auth: true,
       body: JSON.stringify(payload),
     });
     return { success: true, data: response };
@@ -51,10 +52,6 @@ export const createPayment = async (payload: {
   }
 };
 
-/**
- * Server action that validates a FormData payload against the Zod
- * create-payment schema before forwarding to the API.
- */
 export const createPaymentFormAction = async (
   _prev: FormActionResult<CreatePaymentResponse> | undefined,
   formData: FormData,

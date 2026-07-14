@@ -8,72 +8,72 @@ const positiveInt = (msg) =>
 
 const optionalPositiveInt = (msg) =>
   z
-    .union([z.string(), z.number(), z.undefined(), z.null()])
-    .transform((v) => (v === undefined || v === null || v === "" ? undefined : Number(v)))
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => (v === null || v === "" ? undefined : Number(v)))
     .refine(
       (v) => v === undefined || (Number.isInteger(v) && v > 0),
       { message: msg },
-    );
+    )
+    .nullish();
 
 const optionalNonNegativeNumber = (msg) =>
   z
-    .union([z.string(), z.number(), z.undefined(), z.null()])
-    .transform((v) => (v === undefined || v === null || v === "" ? undefined : Number(v)))
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => (v === null || v === "" ? undefined : Number(v)))
     .refine(
       (v) => v === undefined || (Number.isFinite(v) && v >= 0),
       { message: msg },
-    );
+    )
+    .nullish();
 
 const optionalIsoDate = (msg) =>
   z
-    .union([z.string(), z.undefined(), z.null()])
-    .transform((v) => {
-      if (v === undefined || v === null || v === "") return undefined;
-      return v;
-    })
+    .union([z.string(), z.null()])
+    .transform((v) => (v === null || v === "" ? undefined : v))
     .refine(
       (v) =>
         v === undefined ||
         /^\d{4}-\d{2}-\d{2}$/.test(v),
       { message: msg },
-    );
+    )
+    .nullish();
 
 const optionalIsoDateTime = (msg) =>
   z
-    .union([z.string(), z.undefined(), z.null()])
-    .transform((v) => {
-      if (v === undefined || v === null || v === "") return undefined;
-      return v;
-    })
+    .union([z.string(), z.null()])
+    .transform((v) => (v === null || v === "" ? undefined : v))
     .refine(
       (v) =>
         v === undefined || !Number.isNaN(Date.parse(v)),
       { message: msg },
-    );
+    )
+    .nullish();
 
 const optionalRepeatDays = (msg) =>
   z
-    .union([z.string(), z.number(), z.undefined(), z.null()])
+    .union([z.string(), z.number(), z.null()])
     .transform((v) => {
-      if (v === undefined || v === null || v === "") return undefined;
+      if (v === null || v === "") return undefined;
       const n = Number(v);
       return Number.isInteger(n) ? n : v;
     })
     .refine(
       (v) => v === undefined || (Number.isInteger(v) && v >= 1 && v <= 127),
       { message: msg },
-    );
+    )
+    .nullish();
 
 const optionalStatus = (msg) =>
   z
-    .union([z.string(), z.undefined(), z.null()])
-    .transform((v) => (v === undefined || v === null || v === "" ? undefined : v))
+    .union([z.string(), z.null()])
+    .transform((v) => (v === null || v === "" ? undefined : v))
     .refine(
       (v) =>
         v === undefined ||
         ["SCHEDULED", "COMPLETED", "CANCELLED"].includes(v),
       { message: msg },
-    );
+    )
+    .nullish();
 
 export const createScheduleSchema = z
   .object({
@@ -111,7 +111,6 @@ export const createScheduleSchema = z
     },
   );
 
-// All fields optional - admin may edit any subset of the schedule template.
 export const updateScheduleSchema = z
   .object({
     route_id: optionalPositiveInt("route_id must be a positive integer"),

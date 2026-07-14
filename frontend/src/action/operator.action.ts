@@ -11,10 +11,10 @@ type ActionResult<T = null> = {
 
 export type CreateOperatorPayload = {
   owner_user_id: number;
-  company_name: string;
-  contact_email: string;
-  contact_phone?: string;
-  is_active?: boolean;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
 };
 
 export const createOperatorAction = async (
@@ -92,10 +92,10 @@ export const getMyOperatorAction = async (): Promise<
 };
 
 export type UpdateOperatorPayload = {
-  company_name?: string;
-  contact_email?: string;
-  contact_phone?: string;
-  is_active?: boolean;
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 };
 
 export const updateOperatorAction = async (

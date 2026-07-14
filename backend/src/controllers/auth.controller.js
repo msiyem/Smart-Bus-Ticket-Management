@@ -1,21 +1,39 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { verifyGoogleToken } from "../utils/google.js";
-import {
-  deleteRefreshToken,
-  findRefreshToken,
-  generateAccessToken,
-  generateNewRefreshToken,
-  generateRefreshToken,
-  revokedRefreshTokenBySessionId,
-  revokedRefreshTokenByUserId,
-  revokeToken,
-} from "../services/token.service.js";
-import { requireFields } from "../validations/requireFields.validate.js";
 import ms from "ms";
+import { verifyGoogleToken } from "../utils/google.js";
+import { generateAccessToken } from "../services/token.service.js";
+import { requireFields } from "../validations/requireFields.validate.js";
 
-//auth/me endpoint to get current user info
+const ACCESS_EXPIRES_IN = process.env.ACCESS_EXPIRES_IN || "1d";
+
+const cookieDefaults = () => ({
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+});
+
+const setAuthCookie = (res, accessToken) => {
+  res.cookie("accessToken", accessToken, {
+    ...cookieDefaults(),
+    maxAge: ms(ACCESS_EXPIRES_IN),
+  });
+};
+
+const clearAuthCookie = (res) => {
+  res.clearCookie("accessToken", cookieDefaults());
+};
+
+const buildUserResponse = (user) => ({
+  userId: user.id,
+  role: user.role,
+  name: user.name,
+  email: user.email,
+  username: user.username,
+  phone: user.phone,
+});
+
 export const me = (req, res) => {
   return res.json({
     success: true,
@@ -26,7 +44,6 @@ export const me = (req, res) => {
   });
 };
 
-//============== LOGIN LOGIC ===============
 export const login = async (req, res) => {
   try {
     requireFields(req.body, "email", "password");
@@ -62,175 +79,88 @@ export const login = async (req, res) => {
   }
 
   const accessToken = generateAccessToken(user);
-  const [refreshToken, sessionId] = await generateRefreshToken(user);
+  setAuthCookie(res, accessToken);
 
   return res.json({
     success: true,
     message: "Login successful",
-
-    accessToken,
-    refreshToken,
-    sessionId,
-    user: {
-      userId: user.id,
-      role: user.role,
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      phone: user.phone,
-    },
+    user: buildUserResponse(user),
   });
 };
 
-//============== GOOGLE LOGIN LOGIC ==============
 export const googleLogin = async (req, res) => {
-  const { idToken } = req.body;
-
-  const payload = await verifyGoogleToken(idToken);
-
-  const [rows] = await pool.execute("SELECT * FROM users WHERE email = ?", [
-    payload.email,
-  ]);
-
-  let user = rows[0];
-
-  if (!user) {
-    const [result] = await pool.execute(
-      "INSERT INTO users (name, provider, provider_id, email) VALUES (?, ?, ?, ?)",
-      [payload.name, "google", payload.sub, payload.email],
-    );
-    user = { id: result.insertId, name: payload.name, email: payload.email };
-  }
-
-  const accessToken = generateAccessToken(user);
-  const [refreshToken, sessionId] = await generateRefreshToken(user);
-
-  return res.json({
-    success: true,
-    message: "Google login successful",
-
-    accessToken,
-    refreshToken,
-    sessionId,
-    user: {
-      userId: user.id,
-      role: user.role,
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      phone: user.phone,
-    },
-  });
-};
-
-//============== REFRESH TOKEN LOGIC ===============
-export const refresh = async (req, res) => {
   try {
-    const token = req.body?.refreshToken || req.cookies?.refreshToken;
-    const sessionId = req.body?.sessionId || req.cookies?.sessionId;
+    const { idToken } = req.body;
 
-    if (!token || !sessionId) {
-      return res.status(401).json({
+    const payload = await verifyGoogleToken(idToken);
+
+    if (!payload?.email) {
+      return res.status(400).json({
         success: false,
-        message: "No refresh token or session provided",
+        message: "Google account has no email",
       });
     }
 
-    const stored = await findRefreshToken(token, sessionId);
-
-    if (!stored) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid refresh token",
-      });
-    }
-
-    if (
-      (stored.expires_at && new Date(stored.expires_at) < new Date()) ||
-      (stored.max_age && new Date(stored.max_age) < new Date())
-    ) {
-      await revokedRefreshTokenBySessionId(sessionId);
-
-      return res.status(401).json({
-        success: false,
-        message: "Refresh token expired",
-      });
-    }
-
-    if (stored.is_revoked) {
-      await revokedRefreshTokenByUserId(stored.user_id);
-
-      return res.status(403).json({
-        success: false,
-        message: "Refresh token revoked",
-      });
-    }
-
-    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [
-      stored.user_id,
+    const [rows] = await pool.execute("SELECT * FROM users WHERE email = ?", [
+      payload.email,
     ]);
 
-    const user = rows[0];
+    let user = rows[0];
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      const randomHash = await bcrypt.hash(
+        `google-${payload.sub}-${Date.now()}-${Math.random()}`,
+        12,
+      );
+
+      const [result] = await pool.execute(
+        "INSERT INTO users (name, email, password_hash, provider, provider_id, role) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          payload.name || payload.email.split("@")[0],
+          payload.email,
+          randomHash,
+          "google",
+          payload.sub,
+          "user",
+        ],
+      );
+
+      const [createdRows] = await pool.execute(
+        "SELECT * FROM users WHERE id = ?",
+        [result.insertId],
+      );
+      user = createdRows[0];
+    } else if (user.provider === "local") {
+      await pool.execute(
+        "UPDATE users SET provider = ?, provider_id = ? WHERE id = ?",
+        ["google", payload.sub, user.id],
+      );
+      user.provider = "google";
+      user.provider_id = payload.sub;
     }
 
-    // rotate refresh token
-    const [newRefreshToken, newHashedToken] = await generateNewRefreshToken(
-      user,
-      sessionId,
-    );
-
-    await revokeToken(sessionId, token, newHashedToken);
-
     const accessToken = generateAccessToken(user);
+    setAuthCookie(res, accessToken);
 
     return res.json({
       success: true,
-      message: "Token refreshed",
-      accessToken,
-      refreshToken: newRefreshToken,
-      sessionId,
+      message: "Google login successful",
+      user: buildUserResponse(user),
     });
   } catch (error) {
-    console.error("REFRESH ERROR:", error);
-
-    return res.status(500).json({
+    console.error("GOOGLE LOGIN ERROR:", error);
+    return res.status(401).json({
       success: false,
-      message: "Internal server error in refresh",
+      message:
+        error?.message || "Google login failed - token could not be verified",
     });
   }
 };
 
-//============== LOGOUT LOGIC ===============
-export const logout = async (req, res) => {
-  try {
-    const token =
-      req.body?.refreshToken || req.cookies?.refreshToken;
-
-    const sessionId =
-      req.body?.sessionId || req.cookies?.sessionId;
-
-    if (token && sessionId) {
-      const stored = await findRefreshToken(token, sessionId);
-
-      if (stored) {
-        await revokedRefreshTokenBySessionId(sessionId);
-      }
-    }
-
-    return res.json({
-      success: true,
-      message: "Logged out successfully",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Logout failed",
-    });
-  }
+export const logout = async (_req, res) => {
+  clearAuthCookie(res);
+  return res.json({
+    success: true,
+    message: "Logged out successfully",
+  });
 };

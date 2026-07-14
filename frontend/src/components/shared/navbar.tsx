@@ -1,5 +1,3 @@
-// components/shared/navbar.tsx
-
 import { getUser } from "@/lib/auth/getUser";
 import NavbarClient from "./navbar-client";
 
