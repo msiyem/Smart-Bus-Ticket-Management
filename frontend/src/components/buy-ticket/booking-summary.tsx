@@ -34,8 +34,8 @@ export function BookingSummary({
                 Route
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100 print:text-slate-900">
-                {bookingSummary.schedule.source_city} to{" "}
-                {bookingSummary.schedule.destination_city}
+                {bookingSummary.trip.source_city} to{" "}
+                {bookingSummary.trip.destination_city}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900 print:bg-slate-100">
@@ -43,8 +43,8 @@ export function BookingSummary({
                 Bus
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100 print:text-slate-900">
-                {bookingSummary.schedule.operator_name ||
-                  bookingSummary.schedule.bus_type}
+                {bookingSummary.trip.operator_name ||
+                  bookingSummary.trip.bus_type}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900 print:bg-slate-100">
@@ -52,7 +52,7 @@ export function BookingSummary({
                 Departure
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100 print:text-slate-900">
-                {formatTime(bookingSummary.schedule.departure_time)}
+                {formatTime(bookingSummary.trip.departure_time)}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900 print:bg-slate-100">
@@ -60,7 +60,7 @@ export function BookingSummary({
                 Arrival
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100 print:text-slate-900">
-                {formatTime(bookingSummary.schedule.arrival_time)}
+                {formatTime(bookingSummary.trip.arrival_time)}
               </p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export function BookingSummary({
                 Fare per seat
               </span>
               <span className="font-medium text-slate-900 dark:text-slate-100 print:text-slate-900">
-                ৳{bookingSummary.schedule.fare}
+                ৳{bookingSummary.trip.fare}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-slate-100 px-4 py-3 text-base dark:bg-slate-900 print:bg-slate-100">

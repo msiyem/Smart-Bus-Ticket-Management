@@ -156,6 +156,10 @@ export const searchSchedules = async (req, res) => {
 
       return {
         ...row,
+        // Keep the search API aligned with the client contract. A trip can
+        // override its schedule fare, so prefer it when displaying a result.
+        fare: Number(row.actual_fare ?? row.schedule_fare),
+        status: row.trip_status,
         departure_time,
         arrival_time,
         available_seats: Math.max(

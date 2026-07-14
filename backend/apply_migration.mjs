@@ -9,7 +9,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const sql = fs.readFileSync(
-  path.join(__dirname, "migrations", "2026_06_19_trips_refactor.sql"),
+  path.join(
+    __dirname,
+    "migrations",
+    "2026_07_14_000001_trips_refactor_fix.sql",
+  ),
   "utf8",
 );
 
@@ -27,16 +31,19 @@ const pool = mysql.createPool({
 async function main() {
   const conn = await pool.getConnection();
   try {
-    console.log("[migrate] applying 2026_06_19_trips_refactor.sql ...");
+    console.log("[migrate] applying 2026_07_14_000001_trips_refactor_fix.sql ...");
     await conn.query(sql);
 
     const [cols] = await conn.query(
-      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+      `SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = 'booking_seats'
+         AND TABLE_NAME IN ('bookings', 'booking_seats')
          AND COLUMN_NAME IN ('trip_id','schedule_id')`,
     );
-    console.log("[migrate] booking_seats columns:", cols.map((r) => r.COLUMN_NAME));
+    console.log(
+      "[migrate] booking columns:",
+      cols.map((r) => `${r.TABLE_NAME}.${r.COLUMN_NAME}`),
+    );
 
     const [usersRole] = await conn.query(
       `SELECT COLUMN_TYPE FROM information_schema.COLUMNS

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { clientGoogleLogin } from "@/lib/auth/client";
 
 // GIS script (not @react-oauth/google) to keep the dep surface small and integration explicit.
@@ -31,6 +31,10 @@ declare global {
 }
 
 let scriptLoadingPromise: Promise<void> | null = null;
+let initializedClientId: string | null = null;
+let credentialHandler:
+  | ((response: { credential?: string }) => void)
+  | null = null;
 
 const loadGisScript = (): Promise<void> => {
   if (typeof window === "undefined") {
@@ -70,16 +74,25 @@ const loadGisScript = (): Promise<void> => {
   return scriptLoadingPromise;
 };
 
+const initializeGis = async (clientId: string): Promise<void> => {
+  await loadGisScript();
+
+  if (initializedClientId === clientId) return;
+
+  window.google!.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response) => credentialHandler?.(response),
+    cancel_on_tap_outside: true,
+    auto_select: false,
+  });
+  initializedClientId = clientId;
+};
+
 type Status = "idle" | "loading" | "ready" | "submitting" | "error";
 
 export function useGoogleLogin() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-
-  const resolverRef = useRef<
-    ((value: { credential: string }) => void) | null
-  >(null);
-  const rejecterRef = useRef<((reason: Error) => void) | null>(null);
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -94,23 +107,8 @@ export function useGoogleLogin() {
       }
       setStatus("loading");
       try {
-        await loadGisScript();
+        await initializeGis(clientId);
         if (cancelled) return;
-
-        window.google!.accounts.id.initialize({
-          client_id: clientId,
-          callback: (response) => {
-            if (response?.credential) {
-              resolverRef.current?.({ credential: response.credential });
-            } else {
-              rejecterRef.current?.(
-                new Error("Google did not return a credential"),
-              );
-            }
-          },
-          cancel_on_tap_outside: true,
-          auto_select: false,
-        });
 
         setStatus("ready");
       } catch (err) {
@@ -142,8 +140,13 @@ export function useGoogleLogin() {
     try {
       const { credential } = await new Promise<{ credential: string }>(
         (resolve, reject) => {
-          resolverRef.current = resolve;
-          rejecterRef.current = reject;
+          credentialHandler = (response) => {
+            if (response.credential) {
+              resolve({ credential: response.credential });
+            } else {
+              reject(new Error("Google did not return a credential"));
+            }
+          };
           window.google!.accounts.id.prompt();
         },
       );
@@ -161,8 +164,7 @@ export function useGoogleLogin() {
       setStatus("error");
       return { success: false, message };
     } finally {
-      resolverRef.current = null;
-      rejecterRef.current = null;
+      credentialHandler = null;
     }
   }, [status, error]);
 
