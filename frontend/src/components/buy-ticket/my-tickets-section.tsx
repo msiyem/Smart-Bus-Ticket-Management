@@ -108,6 +108,9 @@ export function MyTicketsSection({
                             Booking #{ticket.booking.id} •{" "}
                             {ticket.booking.booking_status}
                           </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Operator: {ticket.booking.operator_name || "Not specified"}
+                          </p>
                         </div>
 
                         <div className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
@@ -185,6 +188,9 @@ export function MyTicketsSection({
                           <p className="text-sm text-slate-500">
                             Booking #{ticket.booking.id} •{" "}
                             {ticket.booking.booking_status}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Operator: {ticket.booking.operator_name || "Not specified"}
                           </p>
                         </div>
 

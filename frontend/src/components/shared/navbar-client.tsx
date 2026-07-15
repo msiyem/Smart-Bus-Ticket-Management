@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-import { ChevronDown, Menu, Settings, User, UserRound } from "lucide-react";
+import { ChevronDown, Menu, Settings, Ticket, User, UserRound } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthModalStore } from "@/store/auth-modal-store";
 import { useUserStore } from "@/store/userStore";
@@ -211,6 +211,13 @@ export default function NavbarClient({
                 <Link href="/profile">
                   <User className="w-4 h-4 mr-2" />
                   Profile
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link href="/my-ticket">
+                  <Ticket className="w-4 h-4 mr-2" />
+                  My Tickets
                 </Link>
               </DropdownMenuItem>
 

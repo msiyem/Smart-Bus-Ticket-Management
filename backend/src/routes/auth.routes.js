@@ -5,18 +5,21 @@ import { registerSchema, loginSchema } from "../validations/user.validation.js";
 import {
   googleLoginSchema,
   logoutSchema,
+  updateAccountSchema,
 } from "../validations/auth.validation.js";
 import {
   login,
   logout,
   me,
   googleLogin,
+  updateAccount,
 } from "../controllers/auth.controller.js";
 import { Authenticate } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 router.get("/me", Authenticate, me);
+router.patch("/account", Authenticate, validate(updateAccountSchema), updateAccount);
 
 router
   .post("/register", validate(registerSchema), registerUserController)

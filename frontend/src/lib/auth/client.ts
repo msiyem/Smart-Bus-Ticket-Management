@@ -96,6 +96,44 @@ export async function clientGoogleLogin(
   }
 }
 
+export async function clientUpdateAccount({
+  name,
+  currentPassword,
+  newPassword,
+}: {
+  name: string;
+  currentPassword?: string;
+  newPassword?: string;
+}): Promise<LoginResponse> {
+  try {
+    const res = await fetch(`${requireApiUrl()}/auth/account`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify({ name, currentPassword, newPassword }),
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return { success: false, message: await parseError(res) };
+    }
+
+    const data = await res.json();
+    if (data?.user) setUserInfoCookie(data.user);
+    const user = data?.user
+      ? { ...data.user, id: Number(data.user.userId) }
+      : undefined;
+    return {
+      success: true,
+      message: data?.message || "Account settings updated",
+      user,
+    };
+  } catch (error) {
+    console.error("clientUpdateAccount error:", error);
+    return { success: false, message: "Unable to update account settings" };
+  }
+}
+
 export async function clientLogout(): Promise<{
   success: boolean;
   message?: string;

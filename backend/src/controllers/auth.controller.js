@@ -157,6 +157,62 @@ export const googleLogin = async (req, res) => {
   }
 };
 
+export const updateAccount = async (req, res) => {
+  try {
+    const { name, currentPassword, newPassword } = req.body;
+    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [
+      req.user.userId,
+    ]);
+    const user = rows[0];
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (newPassword) {
+      const passwordMatches = await bcrypt.compare(
+        currentPassword,
+        user.password_hash,
+      );
+      if (!passwordMatches) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password is incorrect",
+        });
+      }
+    }
+
+    if (newPassword) {
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await pool.execute(
+        "UPDATE users SET name = ?, password_hash = ? WHERE id = ?",
+        [name, passwordHash, user.id],
+      );
+    } else {
+      await pool.execute("UPDATE users SET name = ? WHERE id = ?", [
+        name,
+        user.id,
+      ]);
+    }
+
+    const [updatedRows] = await pool.execute(
+      "SELECT * FROM users WHERE id = ?",
+      [user.id],
+    );
+    return res.json({
+      success: true,
+      message: "Account settings updated",
+      user: buildUserResponse(updatedRows[0]),
+    });
+  } catch (error) {
+    console.error("UPDATE ACCOUNT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update account settings",
+    });
+  }
+};
+
 export const logout = async (_req, res) => {
   clearAuthCookie(res);
   return res.json({
