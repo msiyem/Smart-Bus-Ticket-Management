@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import googleLogo from "../../../public/google-logo.png";
 import { registerUser } from "@/action/auth.action";
+import { clientLogin } from "@/lib/auth/client";
 import { useGoogleLogin } from "@/lib/auth/useGoogleLogin";
 import { useRouter } from "next/navigation";
 
@@ -60,16 +61,41 @@ export default function RegisterModal({
     google.status === "submitting" || google.status === "loading";
 
   const onsubmit = async (data: z.infer<typeof registerSchema>) => {
-    const registerPromise = registerUser(data as Record<string, unknown>);
+    const payload: Record<string, unknown> = { ...data };
+    delete payload.confirmPassword;
+
+    const registerPromise = (async () => {
+      const registration = await registerUser(payload);
+
+      if (
+        registration &&
+        typeof registration === "object" &&
+        "success" in registration &&
+        registration.success === false
+      ) {
+        throw new Error(
+          "message" in registration && typeof registration.message === "string"
+            ? registration.message
+            : "Account creation failed",
+        );
+      }
+
+      const loginResult = await clientLogin(data.email, data.password);
+      if (!loginResult.success) {
+        throw new Error(loginResult.message || "Account created, but login failed");
+      }
+    })();
 
     toast.promise(registerPromise, {
       loading: "Creating account...",
-      success: "Account created successfully!",
+      success: "Account created successfully! Redirecting to ticket search...",
       error: (err) => err.message || "Something went wrong",
       richColors: true,
     });
 
     await registerPromise;
+    onOpenChange?.(false);
+    window.location.assign("/bus-tickets");
   };
 
   const handleGoogle = async () => {

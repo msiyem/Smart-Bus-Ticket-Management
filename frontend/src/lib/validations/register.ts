@@ -33,13 +33,12 @@ export const registerSchema = z.object({
   confirmPassword:z
   .string(),
 
-  bio: z
-  .string()
-  .optional(),
-
   address: z
   .string()
-  .min(1, "Address is required")
+  .trim()
+  .min(2, "Address is too short")
+  .max(255, "Address must not exceed 255 characters")
+  .optional()
 
   
 }).refine((data)=>data.password === data.confirmPassword,{

@@ -98,7 +98,7 @@ export const googleLogin = async (idToken: string): Promise<LoginResponse> => {
 };
 
 export const registerUser = async (payload: Record<string, unknown>) => {
-  return serverRequest("users", {
+  return serverRequest("auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
   });
